@@ -5,6 +5,8 @@ WORK IN PROGRESS
 
 'laposte_api' is a library for Python to generate label for Laposte (France), transportation services
 
+This library allow to produce ZPL files used to print parcel label with Zebra printers
+
 The available services are :
 - Colissimo
 
