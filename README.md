@@ -41,11 +41,11 @@ The easiest way to install laposte_api:
         try:
             label_name = service.get_product_code_for_foreign_country(country_code)
         except InvalidCountry, e:
-            raise InvalidCountry(WARNING + e.message)
+            raise (WARNING + e.message)
         except Exception, e:
             raise Exception("'Colissimo and So' Library Error :\n" + e.message)
 
-    # Your system must built sequence according to laposte specification
+    # Your system must built sequence according to laposte specifications
     # depends on self._product_code
     carrier_tracking_ref = service.get_carrier_tracking_ref(sequence)
     try:
@@ -54,7 +54,7 @@ The easiest way to install laposte_api:
         raise InvalidWeight(WARNING + e.message)
     infos = {
         'zip': zip,
-        'country_code': country_code,
+        'country_code': country_code or '',
         'weight': weight,
         'carrier_track': carrier_tracking_ref,
     }
@@ -62,7 +62,6 @@ The easiest way to install laposte_api:
         barcode = service.get_cab_prise_en_charge(infos)
     except InvalidWeight, e:
         raise (WARNING + e.message)
-
     label = {
         'file_type': 'zpl2',
         'name': 'File name' + '.zpl',
@@ -72,11 +71,7 @@ The easiest way to install laposte_api:
         # used to generate label in ZPL format (Zebra Programming Language)
         label['file'] = service.get_label(
             sender, delivery, address, option)
-    except InvalidDataForMako, e:
-        raise (WARNING + e.message)
-    except InvalidKeyInTemplate, e:
-        raise (WARNING + e.message)
-    except InvalidMissingField, e:
+    except (InvalidDataForMako, InvalidKeyInTemplate, InvalidMissingField), e:
         raise (WARNING + e.message)
     except Exception, e:
         raise Exception("'Colissimo and So' Library Error :\n" + e.message)
