@@ -15,6 +15,13 @@ The available services are :
 - So Colissimo (on roadmap: partially implemented : DO NOT USE for now)
 
 
+#Motivation
+
+The first objective of this code is to provide to applications
+ZPL files generation?
+The first application in which it is used is OpenERP.
+
+
 #Installation
 
 The easiest way to install laposte_api:
@@ -35,23 +42,26 @@ The easiest way to install laposte_api:
         InvalidKeyInTemplate,
         InvalidType)
 
-    WARNING = "'Colissimo and So' warning :\n"
+    def get_sequence(label_name):
+        "Define your own method"
+
+    WARN_TITLE = "'Colissimo and So' warning :\n"
     service = ColiPoste(account).get_service(product, code)
-    if self._product == 'Y' and country_code:
+    if product == 'Y' and country_code:
         try:
             label_name = service.get_product_code_for_foreign_country(country_code)
         except InvalidCountry, e:
-            raise (WARNING + e.message)
+            raise (WARN_TITLE + e.message)
         except Exception, e:
             raise Exception("'Colissimo and So' Library Error :\n" + e.message)
 
     # Your system must built sequence according to laposte specifications
     # depends on self._product_code
-    carrier_tracking_ref = service.get_carrier_tracking_ref(sequence)
+    carrier_tracking_ref = service.get_carrier_tracking_ref(get_sequence(label_name))
     try:
         barcode = service.get_cab_prise_en_charge(infos)
     except InvalidWeight, e:
-        raise InvalidWeight(WARNING + e.message)
+        raise InvalidWeight(WARN_TITLE + e.message)
     infos = {
         'zip': zip,
         'country_code': country_code or '',
@@ -61,7 +71,7 @@ The easiest way to install laposte_api:
     try:
         barcode = service.get_cab_prise_en_charge(infos)
     except InvalidWeight, e:
-        raise (WARNING + e.message)
+        raise (WARN_TITLE + e.message)
     label = {
         'file_type': 'zpl2',
         'name': 'File name' + '.zpl',
@@ -72,7 +82,7 @@ The easiest way to install laposte_api:
         label['file'] = service.get_label(
             sender, delivery, address, option)
     except (InvalidDataForMako, InvalidKeyInTemplate, InvalidMissingField), e:
-        raise (WARNING + e.message)
+        raise (WARN_TITLE + e.message)
     except Exception, e:
         raise Exception("'Colissimo and So' Library Error :\n" + e.message)
 
