@@ -54,7 +54,7 @@ PRODUCT_LOGO = {
     '9V': 'EXPERT_F',
     'CY': 'EXPERT_I',
     'EY': 'EXPERT_I',
-    '7A': 'EXPERT_OM',
+    '7Q': 'EXPERT_OM',
     '8R': 'SERVI_F',
 }
 
@@ -71,7 +71,7 @@ ADDRESS_MODEL = {
     "email":     {'max_size': 100},
 }
 DELIVERY_MODEL = {
-    "carrier_tracking_ref":    {'required': True},
+    "cab_suivi":    {'required': True},
     "weight":                  {'required': True},
     "date":                    {'required': True, 'date': '%d/%m/%Y'},
 }
@@ -96,9 +96,10 @@ class ColiPoste(AbstractLabel):
     _account = None
     _service = None
     _product_code = None
+    _test_name = None
 
     _label_code = {
-        'colissimo': ['9V', '9L', '7A', 'Y'],
+        'colissimo': ['9V', '9L', '7Q', 'Y'],
         'so_colissimo': ['6C', '6A', '6K', '6H', '6J', '6M', '6MA']
     }
 
@@ -134,7 +135,7 @@ class ColiPoste(AbstractLabel):
                               % self._label_code[service])
         return service, code
 
-    def get_carrier_tracking_ref(self, sequence):
+    def get_cab_suivi(self, sequence):
         #TODO define how to build sequence
         suffix = ''
         if self._product_code[1:] == 'Y':
@@ -144,9 +145,13 @@ class ColiPoste(AbstractLabel):
         # '>5' is for subset C character
         return sequence + ' ' + str(self.get_ctrl_key(sequence[3:])) + suffix
 
+    def _set_unit_test_file_name(self, name=None):
+        if name:
+            self._test_name = name
+
     def get_label(self, sender, delivery, address, option):
         sender.update({'account': self._account})
-        if self._product_code in ['EY', 'CY', '7A']:
+        if self._product_code in ['EY', 'CY', '7Q']:
             infos = {
                 'phone': {'required': True},
                 'country': {'required': True},
@@ -156,14 +161,17 @@ class ColiPoste(AbstractLabel):
         self.check_model(sender, SENDER_MODEL, 'sender')
         self.check_model(delivery, DELIVERY_MODEL, 'delivery')
         self.check_model(address, ADDRESS_MODEL, 'address')
-        track = delivery['carrier_tracking_ref']
+        pec = delivery['cab_prise_en_charge']
+        pec_bar = pec[:9].replace(' ', '') + '>5' + pec[9:].replace(' ', '')
+        delivery.update({'pec_bar': pec_bar})
+        suivi = delivery['cab_suivi']
         # >5  => is subset C invocation code
-        track_bar = track[:4].replace(' ', '') + '>5'
-        if track[-2:] == 'FR':
-            track_bar += track[4:-2].replace(' ', '') + '>6FR'
+        suivi_bar = suivi[:4].replace(' ', '') + '>5'
+        if suivi[-2:] == 'FR':
+            suivi_bar += suivi[4:-2].replace(' ', '') + '>6FR'
         else:
-            track_bar += track[4:].replace(' ', '')
-        delivery.update({'carrier_tracking_ref_bar': track_bar})
+            suivi_bar += suivi[4:].replace(' ', '')
+        delivery.update({'suivi_bar': suivi_bar})
         # direct key values
         kwargs = {
             '_product_code': self._product_code,
@@ -180,15 +188,15 @@ class ColiPoste(AbstractLabel):
         zpl_file = api.__file__.replace('__init__.py', 'report/') + zpl_file
         with open(zpl_file, 'r') as opened_file:
             file_content = opened_file.read()
-            #self.validate_mako(file_content, kwargs)
             try:
-                print delivery, sender, address, option, kwargs
                 zpl = Template(file_content).render(
                     d=delivery, s=sender, a=address, o=option, **kwargs)
                 content = zpl.encode(encoding=CODING, errors=ERROR_BEHAVIOR)
+                if self._test_name:
+                    self._record_unit_test_datas(
+                        content, delivery, sender, address, option, kwargs)
             except:
                 traceback = RichTraceback()
-                import pdb;pdb.set_trace()
                 # allow to define where the file mako fail
                 for (filename, lineno, fct, line) in traceback.traceback:
                     print "File %s, line %s, in %s" % (filename, lineno, fct)
@@ -201,25 +209,38 @@ class ColiPoste(AbstractLabel):
                        traceback.error, template, lineno))
             return content
 
-    #def validate_mako(self, template, other_datas):
-    #    import re
-    #    all_keys = []
-    #    for elm in [ADDRESS_MODEL, DELIVERY_MODEL, SENDER_MODEL, other_datas]:
-    #        all_keys.append(elm.keys())
-    #    keys2match = []
-    #    for match in re.findall('\$\{(.+?)\}+', template):
-    #        if isinstance(match, dict):
-    #
-    #        keys2match.append(match)
-    #    print keys2match, all_keys
-    #    import pdb;pdb.set_trace()
-    #    unmatch = list(set(keys2match) - set(all_keys))
-    #    if len(unmatch) > 0:
-    #        raise InvalidKeyInTemplate("These keys are defined in mako "
-    #        " template but without valid replacement value\n%s" % unmatch)
-    #    return unmatch
+    def _record_unit_test_datas(
+            self, file_content, delivery, sender, address, option, kwargs):
+        try:
+            path = '/tmp/'
+            path += self._test_name + self._product_code + '.py'
+            full_content = '# -*- coding: utf-8 -*-\n\n'
+            full_content += 'delivery=' + str(delivery) + '\n\n'
+            full_content += 'sender=' + str(sender) + '\n\n'
+            full_content += 'address=' + str(address) + '\n\n'
+            full_content += 'option=' + str(option) + '\n\n'
+            full_content += 'kwargs=' + str(kwargs) + '\n\n'
+            full_content += 'content="""' + file_content + '"""'
+            with open(path, 'w') as wf:
+                wf.write(full_content)
+        except:
+            raise "Invalid path %s" % path
+
+    def print_label(self, printer_name, content, host='127.0.0.1'):
+        #lp -d <zebra_printer> -h 192.168.1.3:631 my_file -o raw
+        try:
+            from cStringIO import StringIO
+        except:
+            from StringIO import StringIO
+        import os
+        file_content = StringIO()
+        file_content.write(content)
+        os.system('lp -d %s -h %s %s-o raw'
+                  % (printer_name, file_content.get_value(), host))
+        file_content.close()
 
     def _populate_option_with_default_value(self, option):
+        #TODO
         return option
 
     def _build_control_key(self, key):
@@ -287,12 +308,12 @@ class Colissimo(ColiPoste):
         ftd = '0'
         ar = '0'
         # outre-mer
-        if self._product_code == '7A' \
+        if self._product_code == '7Q' \
                 and infos.get('option_ftd', False) is True:
             ftd = '1'
         # outre mer + international
         # TODO calculate cy/ey with y + address
-        if self._product_code in ['7A', 'CY'] \
+        if self._product_code in ['7Q', 'CY'] \
                 and infos.get('option_ar', False) is True:
             ar = '1'
         crbt_ftd_ar = {
@@ -449,15 +470,15 @@ class Colissimo(ColiPoste):
         return result
 
     def test_colissmo(self):
-        suivi_7A_8V_9V_8L_9L = '20524 75203'
+        suivi_7Q_8V_9V_8L_9L = '20524 75203'
         suivi_CY_or_EY = '2456 1983'
         prise_en_charge_all = '900 001 0860 00003'
 
         print '  >>> Code de suivi :'
         print 'CY or EY label : control key for \'', suivi_CY_or_EY,
         print ' string is =>', self.get_ctrl_key(suivi_CY_or_EY)
-        print 'other labels : control key for \'', suivi_7A_8V_9V_8L_9L,
-        print 'string is =>', self.get_ctrl_key(suivi_7A_8V_9V_8L_9L)
+        print 'other labels : control key for \'', suivi_7Q_8V_9V_8L_9L,
+        print 'string is =>', self.get_ctrl_key(suivi_7Q_8V_9V_8L_9L)
 
         print '\n  >>> Code de prise en charge :'
         print 'all labels : control key for \'', prise_en_charge_all,
