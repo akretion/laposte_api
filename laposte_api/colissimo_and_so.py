@@ -15,6 +15,8 @@ and in manage_required_and_default_field method
 from mako.template import Template
 from mako.exceptions import RichTraceback
 from datetime import datetime
+#'https://fedorahosted.org/suds/wiki/Documentation'
+from suds.client import Client
 import re
 from .exception_helper import (
     InvalidSequence,
@@ -33,6 +35,7 @@ import countries
 from .label_helper import AbstractLabel
 
 
+WEBSERVICE_URL = 'https://ws.colissimo.fr/soap.shippingclpV2/services/WSColiPosteLetterService?wsdl'
 DEMO = True
 #TODO pass the template as an argument
 CODING = 'cp1252'
@@ -54,7 +57,7 @@ PRODUCT_LOGO = {
     '9V': 'EXPERT_F',
     'CY': 'EXPERT_I',
     'EY': 'EXPERT_I',
-    '7Q': 'EXPERT_OM',
+    '7Q': 'EXPER_OM',
     '8R': 'SERVI_F',
 }
 
@@ -71,9 +74,9 @@ ADDRESS_MODEL = {
     "email":     {'max_size': 100},
 }
 DELIVERY_MODEL = {
-    "cab_suivi":    {'required': True},
-    "weight":                  {'required': True},
-    "date":                    {'required': True, 'date': '%d/%m/%Y'},
+    "weight":        {'required': True},
+    "date":          {'required': True, 'date': '%d/%m/%Y'},
+    "Instructions":  {'max_size': 70},
 }
 SENDER_MODEL = {
     "name":         {'required': True},
@@ -100,7 +103,8 @@ class ColiPoste(AbstractLabel):
 
     _label_code = {
         'colissimo': ['9V', '9L', '7Q', 'Y'],
-        'so_colissimo': ['6C', '6A', '6K', '6H', '6J', '6M', '6MA']
+        'so_colissimo': ['6C', '6A', '6K', '6H', '6J', '6M', '6MA'],
+        'ColiPosteInternational': ['EI', 'AI', 'SO'],
     }
 
     def __init__(self, account):
@@ -109,12 +113,25 @@ class ColiPoste(AbstractLabel):
 
     def get_service(self, service_name, code):
         if service_name == 'colissimo':
-            service = Colissimo(self._account)
-        else:
-            service = SoColissimo(self._account)
+            if code in ['EI', 'AI']:
+                service = WSInternational(self._account)
+                service_name = 'ColiPosteInternational'
+            else:
+                service = Colissimo(self._account)
+                self._complete_models()
+        elif service_name == 'so_colissimo':
+            if code == 'SO':
+                service = WSInternational(self._account)
+                service_name = 'ColiPosteInternational'
+            else:
+                service = SoColissimo(self._account)
+                self._complete_models()
         service._service, service._product_code = self._check_service(
             service_name, code)
         return service
+
+    def _complete_models(self):
+        DELIVERY_MODEL.update({"cab_suivi": {'required': True}})
 
     def _check_account(self, account):
         if not account or len(account) != 6:
@@ -226,8 +243,9 @@ class ColiPoste(AbstractLabel):
         except:
             raise "Invalid path %s" % path
 
-    def print_label(self, printer_name, content, host='127.0.0.1'):
+    def print_label(self, printer_name, content):
         #lp -d <zebra_printer> -h 192.168.1.3:631 my_file -o raw
+        #TODO debug
         try:
             from cStringIO import StringIO
         except:
@@ -235,11 +253,14 @@ class ColiPoste(AbstractLabel):
         import os
         file_content = StringIO()
         file_content.write(content)
-        os.system('lp -d %s -h %s %s-o raw'
-                  % (printer_name, file_content.get_value(), host))
+        os.system('lp -d %s -o raw %s'
+                  % (printer_name, file_content.getvalue()))
         file_content.close()
 
     def _populate_option_with_default_value(self, option):
+        for opt in ['ftd', 'ar', 'nm']:
+            if opt not in option:
+                option[opt] = False
         #TODO
         return option
 
@@ -268,20 +289,155 @@ class ColiPoste(AbstractLabel):
         return str(result)
 
 
+class WSInternational(ColiPoste):
+
+    def get_label(self, sender, delivery, address, option):
+        infos = {
+            'password': {'required': True},
+            'phone': {'required': True},
+            'country': {'required': True},
+        }
+        SENDER_MODEL.update(infos)
+        option.update(self._populate_option_with_default_value(option))
+        client = Client(WEBSERVICE_URL)
+        ADDRESS_MODEL.update({'countryCode': {'required': True}})
+        letter = client.factory.create('Letter')
+        letter.contractNumber = self._account
+        letter.password = sender['password']
+        letter.profil = 'SPECIFIQUE'
+        letter.service = self._set_service(client)
+        letter.parcel = self._set_parcel(client, delivery, option)
+        dest = client.factory.create('DestEnvVO')
+        dest.addressVO = self._set_address_dest(client, address)
+        letter.dest = dest
+        exp = client.factory.create('ExpEnvVO')
+        exp.addressVO = self._set_address_exp(client, sender)
+        if 'name' in delivery:
+            exp.ref = delivery['name']
+        letter.exp = exp
+        import pdb;pdb.set_trace()
+        resp = client.genererEtiquetteBIC3Request(letter)
+        print resp
+
+    def _set_service(self, client):
+        service = client.factory.create('ServiceCallContextV2')
+        service.DateDeposite = datetime.strftime(datetime.now(),
+                                                 '%Y-%m-%dT%H:%M:%S.000Z')
+        service.languageConsignor = 'FR'
+        service.languageConsignee = 'FR'
+        #TODO complete crbt management
+        service.Crbt = 0
+        service.CrbtAmount = 0
+        if self._product_code == 'SO':
+            service.partnerNetworkCode = 'R12'
+            #TODO
+            service.CommercialName = None         # mandatory if so colissimo
+        return service
+
+    def _set_parcel(self, client, delivery, option):
+        ""
+        self.check_model(delivery, DELIVERY_MODEL, 'delivery')
+        parc = client.factory.create('ParcelVO')
+        parc.typeGamme = self._product_code
+        #TODO manage 'return type'
+        parc.returnTypeChoice = 3
+        #TODO manage insurance range
+        parc.insuranceRange = '00'
+        parc.insuranceAmount = 0
+        parc.insuranceValue = 0
+        #TODO manage weight with Access Internat.
+        parc.weight = delivery['weight']
+        parc.horsGabarit = int(option['nm'])
+        #TODO manage HorsGabaritAmount
+        parc.HorsGabaritAmount = 0
+        #TODO manage DeliveryMode/RegateCode pour So Colissimo
+        if self._product_code == 'SO':
+            parc.DeliveryMode = 'DOM'  # or DOM/DOS/CMT/BDP
+            parc.RegateCode = ''
+        parc.ReturnReceipt = int(option['ar'])
+        parc.Instructions = delivery['Instructions'][:71]
+        #TODO manage RegateCode si So Colissimo
+        #parc.RegateCode =
+        #TODO manage other categories
+        contents = client.factory.create('ContentsVO')
+        cat = client.factory.create('CategorieVO')
+        cat.value = 3
+        contents.categorie = cat  # Envoi commercial
+        parc.contents = contents
+        #TODO complete articles
+        #art = client.factory.create('ArticleVO')
+        #art.description = ''
+        #parc.article = art
+        return parc
+
+    def _set_address_dest(self, client, address):
+        self.check_model(address, ADDRESS_MODEL, 'address')
+        addr_dest = client.factory.create('AddressVO')
+        self._address_vo(addr_dest, address)
+        self._check_country_code(address['countryCode'])
+        return addr_dest
+
+    def _set_address_exp(self, client, sender):
+        self.check_model(sender, SENDER_MODEL, 'sender')
+        addr_exp = client.factory.create('AddressVO')
+        if 'countryCode' not in sender or not sender['countryCode']:
+            sender.update({'countryCode': 'FR'})
+        self._address_vo(addr_exp, sender)
+        return addr_exp
+
+    def _address_vo(self, obj, info):
+        "Common method for sender and destination address"
+        elments = {
+            'Name': 'name',
+            'city': 'city',
+            'postalCode': 'zip',
+            'MobileNumber': 'mobile',
+            'PhoneNumber': 'phone',
+            'email': 'email',
+            'countryCode': 'countryCode',
+            'country': False,
+            'line0': 'street2',
+            'line1': 'street3',
+            'line2': 'street',
+            'line3': False,
+            'DoorCode1': 'door_code',
+            'DoorCode2': 'door_code2',
+            'Interphone': 'intercom',
+            'Civility': False,
+            'companyName': False,
+        }
+        for elm, val in elments.items():
+            obj[elm] = ''
+            if val in info:
+                obj[elm] = info[val]
+        obj['Surname'] = ' '
+        return True
+
+    def _check_country_code(self, country_code):
+        if country_code != 'FR':
+            if not countries.datas.get(country_code):
+                raise InvalidCountry(
+                    "Country code '%s' doesn't exists. \nCheck your datas"
+                    % country_code)
+            if country_code == 'BE' and self._product_code != 'SO':
+                raise InvalidCountry(
+                    "Belgium destination must use 'SO' "
+                    "product.\nCheck your datas"
+                    % country_code)
+        elif self._product_code[1:] == 'I':
+            raise InvalidCountry("EI/AI label type can't be used for France")
+        return True
+
+
 class Colissimo(ColiPoste):
-    ""
 
     def get_cab_prise_en_charge(self, infos):
-        if len(self._product_code) != 2:
-            # exception for Y label
-            raise("You must call 'get_product_code_for_foreign_country()' "
-                  "method before to call 'get_cab_prise_en_charge()'")
         # ordre de tri
         order = '1'
         if self._product_code[1:] == 'Y':
             order = '2'
         zip_country = self._get_zip_country(
-            infos.get('zip'), infos.get('country_code'))
+            infos.get('zip'), infos.get('countryCode'))
         # weight
         if self._product_code == '8R':
             # '8R' is not fully implemented
@@ -299,9 +455,9 @@ class Colissimo(ColiPoste):
             # TODO implement real values
         valor = '00'
         # 'non mécanisable' colissimo
-        non_machinable = '0'
-        if infos.get('non_machinable'):
-            non_machinable = '1'
+        nm = '0'
+        if infos.get('nm'):
+            nm = '1'
         # FTD/AR management done
             # TODO CRBT management
         crbt = '0'
@@ -341,7 +497,7 @@ class Colissimo(ColiPoste):
             + weight
             + ' '
             + valor
-            + non_machinable
+            + nm
             + ''
             + code_crbt_ftd_ar
             + ctrl_link
@@ -351,7 +507,7 @@ class Colissimo(ColiPoste):
         return barcode
 
     def _populate_option_with_default_value(self, option):
-        for opt in ['non_machinable', 'ar', 'ftd']:
+        for opt in ['nm', 'ar', 'ftd']:
             if opt not in option:
                 option[opt] = False
         return option
@@ -383,27 +539,27 @@ class Colissimo(ColiPoste):
             raise InvalidZipCode("'Address zip' must not be empty'")
         return zip_country
 
-    def get_product_code_for_foreign_country(self, country_code):
-        """Foreign destination use CY or EY label.
-        This method allow to select the right label."""
-        if country_code != 'FR':
-            if countries.datas.get(country_code):
-                product_code = countries.datas[country_code].get('product')
-                if not product_code:
-                    raise InvalidCountry(
-                        "'%s' country can't receive parcel from Colissimo "
-                        "\n(country code '%s')"
-                        % (countries.datas[country_code]['country'],
-                           country_code))
-                else:
-                    self._product_code = product_code
-            else:
-                raise InvalidCountry(
-                    "Country code '%s' doesn't exists. \nCheck your datas"
-                    % country_code)
-        elif self._product_code == 'Y':
-            raise InvalidCountry("Y label type can't be used for France")
-        return self._product_code
+    #def get_product_code_for_foreign_country(self, country_code):
+    #    """Foreign destination use CY or EY label.
+    #    This method allow to select the right label."""
+    #    if country_code != 'FR':
+    #        if countries.datas.get(country_code):
+    #            product_code = countries.datas[country_code].get('product')
+    #            if not product_code:
+    #                raise InvalidCountry(
+    #                    "'%s' country can't receive parcel from Colissimo "
+    #                    "\n(country code '%s')"
+    #                    % (countries.datas[country_code]['country'],
+    #                       country_code))
+    #            else:
+    #                self._product_code = product_code
+    #        else:
+    #            raise InvalidCountry(
+    #                "Country code '%s' doesn't exists. \nCheck your datas"
+    #                % country_code)
+    #    elif self._product_code[1:] == 'I':
+    #        raise InvalidCountry("EI/AI label type can't be used for France")
+    #    return self._product_code
 
     def colissimo_international_calculation(self, key):
         """ CY / EY label colissimo specific calculation
@@ -529,7 +685,7 @@ class SoColissimo(ColiPoste):
             + " %04d " % (delivery['weight'] * 100)
             #TODO support insurance
             + "00"
-            + "%d" % delivery['non_machinable']
+            + "%d" % delivery['nm'] # non_machinable
             + "0"
             + delivery['suivi_barcode'][12]
         )
