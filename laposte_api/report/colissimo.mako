@@ -77,7 +77,7 @@ TEL: ${s['phone']}
 % endif
 
 /* /!\ /_\ /!\ /_\ /!\ */
-% if o['non_machinable']:
+% if o['nm']:
 ^FO570,350^XGE:NM,1,1^FS
 % endif
 % if o['ar'] and _product_code in ['7Q', 'CY']:
@@ -118,7 +118,7 @@ TEL: ${s['phone']}
 ^FO30,780^FDTEL: ${a['phone']}^FS
 % endif
 % if _product_code[1:] == 'Y':
-^A0,40^FO30,810^FD${a['name']} - ${a['country_code']}^FS
+^A0,40^FO30,810^FD${a['name']} - ${a['countryCode']}^FS
 % endif
 ^FO0,950^A0B^FDSPECIFIQUE^FS
 
