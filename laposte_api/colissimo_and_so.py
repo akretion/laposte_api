@@ -55,8 +55,6 @@ PRODUCT_LOGO = {
     # colissimo
     '9L': 'ACCESS_F',
     '9V': 'EXPERT_F',
-    'CY': 'EXPERT_I',
-    'EY': 'EXPERT_I',
     '7Q': 'EXPER_OM',
     '8R': 'SERVI_F',
 }
@@ -102,7 +100,7 @@ class ColiPoste(AbstractLabel):
     _test_name = None
 
     _label_code = {
-        'colissimo': ['9V', '9L', '7Q', 'Y'],
+        'colissimo': ['9V', '9L', '7Q'],
         'so_colissimo': ['6C', '6A', '6K', '6H', '6J', '6M', '6MA'],
         'ColiPosteInternational': ['EI', 'AI', 'SO'],
     }
@@ -154,13 +152,7 @@ class ColiPoste(AbstractLabel):
 
     def get_cab_suivi(self, sequence):
         #TODO define how to build sequence
-        suffix = ''
-        if self._product_code[1:] == 'Y':
-            # Expert international colissimo have a suffix string
-            # (>6 is for subset B character)
-            suffix = ' FR'
-        # '>5' is for subset C character
-        return sequence + ' ' + str(self.get_ctrl_key(sequence[3:])) + suffix
+        return sequence + ' ' + str(self.get_ctrl_key(sequence[3:]))
 
     def _set_unit_test_file_name(self, name=None):
         if name:
@@ -168,7 +160,7 @@ class ColiPoste(AbstractLabel):
 
     def get_label(self, sender, delivery, address, option):
         sender.update({'account': self._account})
-        if self._product_code in ['EY', 'CY', '7Q']:
+        if self._product_code in ['I', '7Q']:
             infos = {
                 'phone': {'required': True},
                 'country': {'required': True},
@@ -315,7 +307,6 @@ class WSInternational(ColiPoste):
         if 'name' in delivery:
             exp.ref = delivery['name']
         letter.exp = exp
-        import pdb;pdb.set_trace()
         resp = client.genererEtiquetteBIC3Request(letter)
         print resp
 
@@ -434,13 +425,11 @@ class Colissimo(ColiPoste):
     def get_cab_prise_en_charge(self, infos):
         # ordre de tri
         order = '1'
-        if self._product_code[1:] == 'Y':
-            order = '2'
         zip_country = self._get_zip_country(
             infos.get('zip'), infos.get('countryCode'))
         # weight
         if self._product_code == '8R':
-            # '8R' is not fully implemented
+            # '8R' return label is not fully implemented
             weight = '0001 '
         else:
             if infos.get('weight'):
@@ -464,14 +453,11 @@ class Colissimo(ColiPoste):
         ftd = '0'
         ar = '0'
         # outre-mer
-        if self._product_code == '7Q' \
-                and infos.get('option_ftd', False) is True:
-            ftd = '1'
-        # outre mer + international
-        # TODO calculate cy/ey with y + address
-        if self._product_code in ['7Q', 'CY'] \
-                and infos.get('option_ar', False) is True:
-            ar = '1'
+        if self._product_code == '7Q':
+            if infos.get('ftd', False) is True:
+                ftd = '1'
+            if infos.get('ar', False) is True:
+                ar = '1'
         crbt_ftd_ar = {
             '000': '0',
             '100': '1',
@@ -515,7 +501,7 @@ class Colissimo(ColiPoste):
     def _get_zip_country(self, zip_code=None, country_code=None):
         if zip_code:
             zip_country = zip_code
-            if self._product_code[1:] != 'Y':
+            if self._product_code[1:] != 'I':
                 if len(zip_code) != 5:
                     raise InvalidZipCode(
                         "Address zip '%s' must have a size "
@@ -538,48 +524,6 @@ class Colissimo(ColiPoste):
         else:
             raise InvalidZipCode("'Address zip' must not be empty'")
         return zip_country
-
-    #def get_product_code_for_foreign_country(self, country_code):
-    #    """Foreign destination use CY or EY label.
-    #    This method allow to select the right label."""
-    #    if country_code != 'FR':
-    #        if countries.datas.get(country_code):
-    #            product_code = countries.datas[country_code].get('product')
-    #            if not product_code:
-    #                raise InvalidCountry(
-    #                    "'%s' country can't receive parcel from Colissimo "
-    #                    "\n(country code '%s')"
-    #                    % (countries.datas[country_code]['country'],
-    #                       country_code))
-    #            else:
-    #                self._product_code = product_code
-    #        else:
-    #            raise InvalidCountry(
-    #                "Country code '%s' doesn't exists. \nCheck your datas"
-    #                % country_code)
-    #    elif self._product_code[1:] == 'I':
-    #        raise InvalidCountry("EI/AI label type can't be used for France")
-    #    return self._product_code
-
-    def colissimo_international_calculation(self, key):
-        """ CY / EY label colissimo specific calculation
-            Y, Z, X variables are described in
-            COLISSIMO EXPERT International documentation
-        """
-        coeff = {2: 7, 3: 9, 4: 5, 5: 3, 6: 2, 7: 4, 8: 6, 9: 8}
-        position = 2
-        Y = 0
-        for arg in key:
-            Y += int(arg) * coeff[position]
-            position += 1
-        Z = Y % 11
-        if Z == 0:
-            X = 5
-        elif Z == 1:
-            X = 0
-        else:
-            X = 11 - Z
-        return X
 
     def get_ctrl_key(self, key):
         warning = "Invalid control key '%s' in get_ctrl_key function"
@@ -620,19 +564,13 @@ class Colissimo(ColiPoste):
             result = (my_sum // 10 + 1) * 10 - my_sum
             if result == 10:
                 result = 0
-        else:
-            # CY/EY label colissimo specific calculation : len(key) is 8
-            result = self.colissimo_international_calculation(key)
         return result
 
     def test_colissmo(self):
         suivi_7Q_8V_9V_8L_9L = '20524 75203'
-        suivi_CY_or_EY = '2456 1983'
         prise_en_charge_all = '900 001 0860 00003'
 
         print '  >>> Code de suivi :'
-        print 'CY or EY label : control key for \'', suivi_CY_or_EY,
-        print ' string is =>', self.get_ctrl_key(suivi_CY_or_EY)
         print 'other labels : control key for \'', suivi_7Q_8V_9V_8L_9L,
         print 'string is =>', self.get_ctrl_key(suivi_7Q_8V_9V_8L_9L)
 
