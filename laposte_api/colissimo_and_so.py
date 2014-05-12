@@ -221,8 +221,8 @@ class ColiPoste(AbstractLabel):
     def _record_unit_test_datas(
             self, file_content, delivery, sender, address, option, kwargs):
         try:
-            path = '/tmp/'
-            path += self._test_name + self._product_code + '.py'
+            import tempfile
+            path = tempfile.gettempdir() + '/' + self._test_name + '.py'
             full_content = '# -*- coding: utf-8 -*-\n\n'
             full_content += 'delivery=' + str(delivery) + '\n\n'
             full_content += 'sender=' + str(sender) + '\n\n'
