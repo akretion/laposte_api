@@ -307,18 +307,18 @@ class WSInternational(ColiPoste):
         if 'name' in delivery:
             exp.ref = delivery['name']
         letter.exp = exp
-        resp = client.genererEtiquetteBIC3Request(letter)
+        resp = client.service.genererEtiquetteBIC3(letter)
         print resp
 
     def _set_service(self, client):
         service = client.factory.create('ServiceCallContextV2')
-        service.DateDeposite = datetime.strftime(datetime.now(),
+        service.dateDeposite = datetime.strftime(datetime.now(),
                                                  '%Y-%m-%dT%H:%M:%S.000Z')
         service.languageConsignor = 'FR'
         service.languageConsignee = 'FR'
         #TODO complete crbt management
-        service.Crbt = 0
-        service.CrbtAmount = 0
+        service.crbt = 0
+        service.crbtAmount = 0
         if self._product_code == 'SO':
             service.partnerNetworkCode = 'R12'
             #TODO
@@ -351,14 +351,26 @@ class WSInternational(ColiPoste):
         #parc.RegateCode =
         #TODO manage other categories
         contents = client.factory.create('ContentsVO')
+        print contents
         cat = client.factory.create('CategorieVO')
-        cat.value = 3
-        contents.categorie = cat  # Envoi commercial
-        parc.contents = contents
+        #import pdb;pdb.set_trace()
+        cat.value = 3           # Envoi commercial
+        contents.categorie = 3
+        print contents
         #TODO complete articles
-        #art = client.factory.create('ArticleVO')
-        #art.description = ''
-        #parc.article = art
+        art = client.factory.create('ArticleVO')
+        print art
+        art.description = ''
+        #TODO put real valeur
+        art.valeur = 3.0
+        art.quantite = 3
+        art.poids = 5
+        #art.numTarifaire = 5
+        #art.paysOrigine = 'FR'
+        contents.article = art
+        print contents
+        #import pdb;pdb.set_trace()
+        parc.contents = contents
         return parc
 
     def _set_address_dest(self, client, address):
@@ -383,7 +395,7 @@ class WSInternational(ColiPoste):
             'city': 'city',
             'postalCode': 'zip',
             'MobileNumber': 'mobile',
-            'PhoneNumber': 'phone',
+            'phone': 'phone',
             'email': 'email',
             'countryCode': 'countryCode',
             'country': False,
