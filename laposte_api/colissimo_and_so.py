@@ -33,6 +33,7 @@ from .exception_helper import (
 )
 import countries
 from .label_helper import AbstractLabel
+import os
 
 
 WEBSERVICE_URL = 'https://ws.colissimo.fr/soap.shippingclpV2/services/WSColiPosteLetterService?wsdl'
@@ -190,12 +191,12 @@ class ColiPoste(AbstractLabel):
         if self._product_code in ['6MA']:
             zpl_file = self._product_codeq
         zpl_file = zpl_file + '.mako'
-        #TODO dirty tip to change in better way :
-        #contact me if you know to import any existing text file
-        #in python lib from an arbitrary execution path
-        import laposte_api as api
-        zpl_file = api.__file__.replace('__init__.py', 'report/') + zpl_file
-        with open(zpl_file, 'r') as opened_file:
+
+        zpl_file_path = os.path.join(
+            os.path.dirname(__file__),
+            'report',
+            zpl_file)
+        with open(zpl_file_path, 'r') as opened_file:
             file_content = opened_file.read()
             try:
                 zpl = Template(file_content).render(
