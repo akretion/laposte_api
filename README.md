@@ -26,7 +26,7 @@ The first application in which it is used is OpenERP.
 
 The easiest way to install laposte_api:
 
-    python setup.py install
+    pip install git@github.com:akretion/laposte_api.git
 
 #Usage
     WORK IN PROGESS
