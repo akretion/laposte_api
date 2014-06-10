@@ -318,7 +318,7 @@ class WSInternational(ColiPoste):
         service.languageConsignor = 'FR'
         service.languageConsignee = 'FR'
         #TODO complete crbt management
-        service.crbt = 0
+        service.crbt = '0'
         service.crbtAmount = 0
         if self._product_code == 'SO':
             service.partnerNetworkCode = 'R12'
@@ -339,14 +339,14 @@ class WSInternational(ColiPoste):
         parc.insuranceValue = 0
         #TODO manage weight with Access Internat.
         parc.weight = delivery['weight']
-        parc.horsGabarit = int(option['nm'])
+        parc.horsGabarit = str(int(option['nm']))
         #TODO manage HorsGabaritAmount
         parc.HorsGabaritAmount = 0
         #TODO manage DeliveryMode/RegateCode pour So Colissimo
         if self._product_code == 'SO':
             parc.DeliveryMode = 'DOM'  # or DOM/DOS/CMT/BDP
             parc.RegateCode = ''
-        parc.ReturnReceipt = int(option['ar'])
+        parc.ReturnReceipt = str(int(option['ar']))
         parc.Instructions = delivery['Instructions'][:71]
         #TODO manage RegateCode si So Colissimo
         #parc.RegateCode =
@@ -414,6 +414,8 @@ class WSInternational(ColiPoste):
             obj[elm] = ''
             if val in info:
                 obj[elm] = info[val]
+                if info[val] is False:
+                    obj[elm] = ''
         obj['Surname'] = ' '
         return True
 
