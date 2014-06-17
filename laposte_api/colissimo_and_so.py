@@ -334,20 +334,25 @@ class WSInternational(ColiPoste):
         """ Wrapper for API requests
         """
         res = {}
-        error_title = "Web Service ColiPoste International\n\n%s"
+        ws_mess_title = "WebService ColiPoste International\n\n%s"
         try:
             result = client.service.genererEtiquetteBIC3(letter)
             if hasattr(result, 'file'):
                 data = result.file.encode(encoding=CODING, errors=ERROR_BEHAVIOR)
-                message = result.message or []
-                parcelNumber = str(res['value'].parcelNumber)
-                parcelNumberPartner = str(res['value'].parcelNumberPartenaire)
+                message = ''
+                if hasattr(result, 'message'):
+                    message = '\n'.join(self.extract_responses_messages(result))
+                    message = ws_mess_title % message
+                else:
+                    message = ''
+                parcelNumber = str(result.parcelNumber)
+                parcelNumberPartner = str(result.parcelNumberPartenaire)
                 return (data, message, parcelNumber, parcelNumberPartner)
             else:
                 message = '\n'.join(self.extract_responses_messages(result))
-                raise InvalidWebServiceRequest(error_title % message)
+                raise InvalidWebServiceRequest(ws_mess_title % message)
         except (WebFault, Exception) as e:
-            raise InvalidWebServiceRequest(error_title % e.message)
+            raise InvalidWebServiceRequest(ws_mess_title % e.message)
         return res
 
     def extract_responses_messages(self, result):
