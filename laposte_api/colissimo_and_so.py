@@ -16,7 +16,7 @@ from mako.template import Template
 from mako.exceptions import RichTraceback
 from datetime import datetime
 #'https://fedorahosted.org/suds/wiki/Documentation'
-from suds.client import Client
+from suds.client import Client, WebFault
 import re
 from .exception_helper import (
     InvalidSequence,
@@ -84,6 +84,10 @@ SENDER_MODEL = {
     "city":         {'required': True},
     "support_city": {'required': True},
 }
+
+
+class InvalidAuthorization(Exception):
+    ''
 
 
 class InvalidDataForMako(Exception):
@@ -308,8 +312,47 @@ class WSInternational(ColiPoste):
         if 'name' in delivery:
             exp.ref = delivery['name']
         letter.exp = exp
-        resp = client.service.genererEtiquetteBIC3(letter)
-        print resp
+        self._tmp(letter)
+        return self._send_request(client, letter)
+
+    def _tmp(self, letter):
+        # <ws:totalAmount>100</ws:totalAmount> => alert si absent
+        del(letter.service.returnType)
+        del(letter.coordinate)
+        del(letter.parcel.DeliveryMode)
+        del(letter.dest.alert)
+        del(letter.dest.codeBarForreference)
+        del(letter.exp.alert)
+        print letter
+        return True
+
+    def _send_request(self, client, letter):
+        """ Wrapper for API requests
+
+        :param request: callback for API request
+        :param **kwargs: params forwarded to the callback
+
+        """
+        res = {}
+        try:
+            res['value'] = client.service.genererEtiquetteBIC3(letter)
+            res['success'] = True
+            rfile = res['value'].file.encode(encoding=CODING, errors=ERROR_BEHAVIOR)
+            rmessage = res['value'].message or []
+            parcelNumber = str(res['value'].parcelNumber)
+            parcelNumberPartner = str(res['value'].parcelNumberPartenaire)
+            return (rfile, rmessage, parcelNumber, parcelNumberPartner)
+        except WebFault as e:
+            res['success'] = False
+            res['errors'] = [e[0]]
+        except Exception as e:
+            # if authentification error
+            if isinstance(e[0], tuple) and e[0][0] == 401:
+                raise InvalidAuthorization(
+                    'Error 401 - Authorization Required\n\n'
+                    'Please check ColiPoste username and password configuration:\n')
+            raise
+        return res
 
     def _set_service(self, client):
         service = client.factory.create('ServiceCallContextV2')
@@ -352,25 +395,19 @@ class WSInternational(ColiPoste):
         #parc.RegateCode =
         #TODO manage other categories
         contents = client.factory.create('ContentsVO')
-        print contents
         cat = client.factory.create('CategorieVO')
-        #import pdb;pdb.set_trace()
         cat.value = 3           # Envoi commercial
         contents.categorie = 3
-        print contents
         #TODO complete articles
         art = client.factory.create('ArticleVO')
-        print art
         art.description = ''
         #TODO put real valeur
         art.valeur = 3.0
         art.quantite = 3
         art.poids = 5
+        art.paysOrigine = 'FR'
         #art.numTarifaire = 5
-        #art.paysOrigine = 'FR'
         contents.article = art
-        print contents
-        #import pdb;pdb.set_trace()
         parc.contents = contents
         return parc
 
