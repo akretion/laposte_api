@@ -86,7 +86,7 @@ SENDER_MODEL = {
 }
 
 
-class InvalidAuthorization(Exception):
+class InvalidWebServiceRequest(Exception):
     ''
 
 
@@ -312,52 +312,54 @@ class WSInternational(ColiPoste):
         if 'name' in delivery:
             exp.ref = delivery['name']
         letter.exp = exp
-        self._tmp(letter)
+        self.unmystify_coliposte_webservice(letter)
         return self._send_request(client, letter)
 
-    def _tmp(self, letter):
-        # <ws:totalAmount>100</ws:totalAmount> => alert si absent
+    def unmystify_coliposte_webservice(self, letter):
+        """ Delete evil attributes from soap xml provided by ColiPoste
+            in order to start up the bouzin without fail
+            Without these instructions, you'll got this message :
+                Server raised fault: 'java.lang.IllegalArgumentException'
+            Nice message, good help, bougez avec la poste
+        """
         del(letter.service.returnType)
         del(letter.coordinate)
         del(letter.parcel.DeliveryMode)
         del(letter.dest.alert)
         del(letter.dest.codeBarForreference)
         del(letter.exp.alert)
-        print letter
         return True
 
     def _send_request(self, client, letter):
         """ Wrapper for API requests
-
-        :param request: callback for API request
-        :param **kwargs: params forwarded to the callback
-
         """
         res = {}
+        error_title = "Web Service ColiPoste International\n\n%s"
         try:
-            res['value'] = client.service.genererEtiquetteBIC3(letter)
-            res['success'] = True
-            rfile = res['value'].file.encode(encoding=CODING, errors=ERROR_BEHAVIOR)
-            rmessage = res['value'].message or []
-            parcelNumber = str(res['value'].parcelNumber)
-            parcelNumberPartner = str(res['value'].parcelNumberPartenaire)
-            return (rfile, rmessage, parcelNumber, parcelNumberPartner)
-        except WebFault as e:
-            res['success'] = False
-            res['errors'] = [e[0]]
-        except Exception as e:
-            # if authentification error
-            if isinstance(e[0], tuple) and e[0][0] == 401:
-                raise InvalidAuthorization(
-                    'Error 401 - Authorization Required\n\n'
-                    'Please check ColiPoste username and password configuration:\n')
-            raise
+            result = client.service.genererEtiquetteBIC3(letter)
+            if hasattr(result, 'file'):
+                data = result.file.encode(encoding=CODING, errors=ERROR_BEHAVIOR)
+                message = result.message or []
+                parcelNumber = str(res['value'].parcelNumber)
+                parcelNumberPartner = str(res['value'].parcelNumberPartenaire)
+                return (data, message, parcelNumber, parcelNumberPartner)
+            else:
+                message = '\n'.join(self.extract_responses_messages(result))
+                raise InvalidWebServiceRequest(error_title % message)
+        except (WebFault, Exception) as e:
+            raise InvalidWebServiceRequest(error_title % e.message)
         return res
+
+    def extract_responses_messages(self, result):
+        response = []
+        for mess in result.message:
+            response.append("* %s %s \n\t%s" % (mess.type, mess.id, mess.libelle))
+        return response
 
     def _set_service(self, client):
         service = client.factory.create('ServiceCallContextV2')
-        service.dateDeposite = datetime.strftime(datetime.now(),
-                                                 '%Y-%m-%dT%H:%M:%S.000Z')
+        service.dateDeposite = datetime.strftime(
+            datetime.now(), '%Y-%m-%dT%H:%M:%S.000Z')
         service.languageConsignor = 'FR'
         service.languageConsignee = 'FR'
         #TODO complete crbt management
