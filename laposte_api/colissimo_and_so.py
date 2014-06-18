@@ -339,12 +339,9 @@ class WSInternational(ColiPoste):
             result = client.service.genererEtiquetteBIC3(letter)
             if hasattr(result, 'file'):
                 data = result.file.encode(encoding=CODING, errors=ERROR_BEHAVIOR)
-                message = ''
+                message = False
                 if hasattr(result, 'message'):
-                    message = '\n'.join(self.extract_responses_messages(result))
-                    message = ws_mess_title % message
-                else:
-                    message = ''
+                    message = self.extract_responses_messages(result)
                 parcelNumber = str(result.parcelNumber)
                 parcelNumberPartner = str(result.parcelNumberPartenaire)
                 return (data, message, parcelNumber, parcelNumberPartner)
@@ -358,7 +355,8 @@ class WSInternational(ColiPoste):
     def extract_responses_messages(self, result):
         response = []
         for mess in result.message:
-            response.append("* %s %s \n\t%s" % (mess.type, mess.id, mess.libelle))
+            response.append(
+                {'type': mess.type, 'id': mess.id, 'libelle': mess.libelle})
         return response
 
     def _set_service(self, client):
@@ -500,8 +498,10 @@ class Colissimo(ColiPoste):
                 raise InvalidWeight("Weight is required and is not specified")
             weight = str(int(round(infos['weight'] * 100))).zfill(4)
         # Tranche assurance Ad Valorem ou niveau de recommandation
-            # TODO implement real values
+            # TODO implement niveau de recommandation
         valor = '00'
+        if 'insurance' in infos:
+            valor = infos['insurance']
         # 'non mécanisable' colissimo
         nm = '0'
         if infos.get('nm'):
