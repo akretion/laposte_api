@@ -15,6 +15,7 @@ and in manage_required_and_default_field method
 from mako.template import Template
 from mako.exceptions import RichTraceback
 from datetime import datetime
+import base64
 #'https://fedorahosted.org/suds/wiki/Documentation'
 from suds.client import Client, WebFault
 import re
@@ -57,7 +58,8 @@ PRODUCT_LOGO = {
     '9L': 'ACCESS_F',
     '9V': 'EXPERT_F',
     '7Q': 'EXPER_OM',
-    '8R': 'SERVI_F',
+    '8Q': 'ACCES_OM',
+    '8R': 'SERVI_F', # NOT implemented
 }
 
 # Here is all keys used in coliposte templates
@@ -105,7 +107,7 @@ class ColiPoste(AbstractLabel):
     _test_name = None
 
     _label_code = {
-        'colissimo': ['9V', '9L', '7Q'],
+        'colissimo': ['9V', '9L', '7Q', '8Q'],
         'so_colissimo': ['6C', '6A', '6K', '6H', '6J', '6M', '6MA'],
         'ColiPosteInternational': ['EI', 'AI', 'SO'],
     }
@@ -165,7 +167,7 @@ class ColiPoste(AbstractLabel):
 
     def get_label(self, sender, delivery, address, option):
         sender.update({'account': self._account})
-        if self._product_code in ['I', '7Q']:
+        if self._product_code in ['7Q', '8Q']:
             infos = {
                 'phone': {'required': True},
                 'country': {'required': True},
@@ -338,7 +340,7 @@ class WSInternational(ColiPoste):
         try:
             result = client.service.genererEtiquetteBIC3(letter)
             if hasattr(result, 'file'):
-                data = result.file.encode(encoding=CODING, errors=ERROR_BEHAVIOR)
+                data = base64.b64decode(result.file)
                 message = False
                 if hasattr(result, 'message'):
                     message = self.extract_responses_messages(result)
