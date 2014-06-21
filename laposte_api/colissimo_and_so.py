@@ -340,7 +340,7 @@ class WSInternational(ColiPoste):
         try:
             result = client.service.genererEtiquetteBIC3(letter)
             if hasattr(result, 'file'):
-                data = base64.b64decode(result.file)
+                data = self.encode_file_data(result.file)
                 message = False
                 if hasattr(result, 'message'):
                     message = self.extract_responses_messages(result)
@@ -353,6 +353,13 @@ class WSInternational(ColiPoste):
         except (WebFault, Exception) as e:
             raise InvalidWebServiceRequest(ws_mess_title % e.message)
         return res
+
+    def encode_file_data(self, data):
+        try:
+            data = base64.b64decode(data).decode('iso-8859-15').encode('utf8')
+        except (UnicodeEncodeError, Exception) as e:
+            raise Exception(e.message)
+        return data.replace('^XA', '^XA\n^CI28\n^LH20,0')
 
     def extract_responses_messages(self, result):
         response = []

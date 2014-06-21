@@ -18,7 +18,7 @@
 / SENDER
 % endif
 ^FS
-% if _product_code in ['9L', '9V', '7Q', '8R', 'CY', 'EY']:
+% if _product_code in ['9L', '9V', '7Q', '8R', '8Q']:
 ^FO450,130^FDRef Client: ${d['ref_client']}^FS
 % endif
 ^FO0,160^GB360,160,4^FS     /*GB:graphic box|width,height,thickness*/
@@ -34,11 +34,11 @@
 /* COLISS RULE Pays expediteur si OM ou I */
 ^A0,24^FD${s['street']}
 \&
-% if _product_code in ['EY', 'CY', '7Q']:
+% if _product_code in ['EY', '8Q', '7Q']:
 TEL: ${s['phone']}
 % endif
 \&${s['zip']} ${s['city']}
-% if _product_code in ['EY', 'CY', '7Q']:
+% if _product_code in ['EY', '8Q', '7Q']:
 \&${s['country']}
 % endif
 ^FS
