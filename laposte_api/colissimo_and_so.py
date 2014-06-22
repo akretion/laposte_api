@@ -506,8 +506,8 @@ class Colissimo(ColiPoste):
             if infos.get('weight'):
                 if infos['weight'] > 30:
                     raise InvalidWeight(
-                        "Weight limit for Colissimo is '30' or '20' kg."
-                        "Please check your stock move lines")
+                        "Weight limit for Colissimo is '30' or '20' kg.\n"
+                        "Please check your product in parcel")
             else:
                 raise InvalidWeight("Weight is required and is not specified")
             weight = str(int(round(infos['weight'] * 100))).zfill(4)

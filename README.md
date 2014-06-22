@@ -34,8 +34,7 @@ The easiest way to install laposte_api:
 
     from laposte_api.colissimo_and_so import (
         ColiPoste,
-        InvalidDataForMako,
-        InvalidWebServiceRequest)
+        InvalidDataForMako)
 
     from laposte_api.exception_helper import (
         InvalidWeight,
@@ -46,8 +45,6 @@ The easiest way to install laposte_api:
         InvalidCountry,
         InvalidKeyInTemplate,
         InvalidType)
-
-    WARN = "'Colissimo and So' warning :\n%s"
 
     # example datas : update with demo datas in ColiPoste specs
     product = 'colissimo'
@@ -66,7 +63,7 @@ The easiest way to install laposte_api:
     try:
         service = ColiPoste(account).get_service(product, label_code)
     except (InvalidSize, InvalidCode, InvalidType, Exception) as e:
-        raise WARN % e.message
+        raise e
 
     tracking_ref = service.get_cab_suivi(get_sequence(label_code))
     
@@ -94,7 +91,7 @@ The easiest way to install laposte_api:
     try:
         prise_en_charge_barcode = service.get_cab_prise_en_charge(infos)
     except (InvalidWeight, Exception) as e:
-        raise WARN % e.message
+        raise e
 
     delivery = {
         'weight': parcel_weight, 'date': '22/06/2014',
@@ -112,10 +109,9 @@ The easiest way to install laposte_api:
         # you can send these datas to your zebra printer
     except (InvalidDataForMako,
             InvalidKeyInTemplate,
-            InvalidWebServiceRequest,
             InvalidKeyInTemplate,
             InvalidMissingField) as e:
-        raise WARN % e.message
+        raise e
 
     print "VOICI L'ETIQUETTE ZPL POUR COLISSIMO France:\n"
     print "=========================================\n\n\n", label_file
