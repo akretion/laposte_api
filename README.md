@@ -70,9 +70,15 @@ The easiest way to install laposte_api:
 
     tracking_ref = service.get_cab_suivi(get_sequence(label_code))
     
-    sender = {'city': u'Paris', 'account': account, 'name': u'My Company', 'zip': u'75001', 'phone': u'01 99 99 99 99', 'country': u'France', 'support_city': u'MOISSY  PFC', 'street': u'1 rue Clignacourt', 'email': u'info@mycompany.com'}
+    sender = {
+        'city': u'Paris', 'account': account, 'name': u'My Company',
+        'zip': u'75001', 'phone': u'01 99 99 99 99', 'country': u'France',
+        'support_city': u'MOISSY  PFC', 'street': u'1 rue Clignacourt',
+        'email': u'info@mycompany.com'}
 
-    address = {'city': u'Lyon', 'name': u'Jim NHASTIC', 'zip': u'69001', 'countryCode': u'FR', 'street': u'150 rue Vauban'}
+    address = {
+        'city': u'Lyon', 'name': u'Jim NHASTIC', 'zip': u'69001',
+        'countryCode': u'FR', 'street': u'150 rue Vauban'}
 
 
     infos = {
