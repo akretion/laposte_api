@@ -10,8 +10,8 @@ This library allow to produce ZPL files used to print parcel label with Zebra pr
 The available services are:
 - Colissimo
 
-    * Colissimo France works
-    * Colissimo International works only up to 2014 July. Since this date La Poste rules change with mandatory web service use (NOT implemented)
+    * Colissimo France
+    * Colissimo International with web service.
 - So Colissimo (on roadmap: partially implemented : DO NOT USE for now)
 
 
@@ -19,7 +19,7 @@ The available services are:
 
 The first objective of this code is to provide to applications
 ZPL files generation?
-The first application in which it is used is OpenERP.
+The first application in which it is used is Odoo / OpenERP.
 
 
 #Installation
@@ -29,9 +29,14 @@ The easiest way to install laposte_api:
     pip install git@github.com:akretion/laposte_api.git
 
 #Usage
-    WORK IN PROGESS
 
-    from laposte_api.colissimo_and_so import ColiPoste, InvalidDataForMako
+    #Example for Colissimo transportation service in France
+
+    from laposte_api.colissimo_and_so import (
+        ColiPoste,
+        InvalidDataForMako,
+        InvalidWebServiceRequest)
+
     from laposte_api.exception_helper import (
         InvalidWeight,
         InvalidSize,
@@ -42,52 +47,72 @@ The easiest way to install laposte_api:
         InvalidKeyInTemplate,
         InvalidType)
 
-    def get_sequence(label_name):
-        "Define your own method"
+    WARN = "'Colissimo and So' warning :\n%s"
 
-    WARN_TITLE = "'Colissimo and So' warning :\n"
-    service = ColiPoste(account).get_service(product, code)
-    if code == 'Y' and country_code:
-        try:
-            label_name = service.get_product_code_for_foreign_country(country_code)
-        except InvalidCountry, e:
-            raise (WARN_TITLE + e.message)
-        except Exception, e:
-            raise Exception("'Colissimo and So' Library Error :\n" + e.message)
+    # example datas : update with demo datas in ColiPoste specs
+    product = 'colissimo'
+    label_code = '9V'
+    account = '766666'
+    parcel_weight = 5
 
-    # Your system must built sequence according to laposte specifications
-    # depends on self._product_code
-    carrier_tracking_ref = service.get_carrier_tracking_ref(get_sequence(label_name))
+
+    def get_sequence(label_code):
+        """ Sequence must be unique and set only once
+            Range numbers are defined by La Poste
+            Define your OWN method
+        """
+        return '9V 00000 00006' #example
+
+    try:
+        service = ColiPoste(account).get_service(product, label_code)
+    except (InvalidSize, InvalidCode, InvalidType, Exception) as e:
+        raise WARN % e.message
+
+    tracking_ref = service.get_cab_suivi(get_sequence(label_code))
+    
+    sender = {'city': u'Paris', 'account': account, 'name': u'My Company', 'zip': u'75001', 'phone': u'01 99 99 99 99', 'country': u'France', 'support_city': u'MOISSY  PFC', 'street': u'1 rue Clignacourt', 'email': u'info@mycompany.com'}
+
+    address = {'city': u'Lyon', 'name': u'Jim NHASTIC', 'zip': u'69001', 'countryCode': u'FR', 'street': u'150 rue Vauban'}
+
+
     infos = {
-        'zip': zip,
-        'country_code': country_code or '',
-        'weight': weight,
-        'carrier_track': carrier_tracking_ref,
+        'zip': address['zip'],
+        'countryCode': address['countryCode'],
+        'weight': parcel_weight,
+        'carrier_track': tracking_ref,
     }
+
+    option = {'ftd': False, 'ar': False, 'nm': True, 'insurance': u'03'}
+    infos.update(option)
+
     try:
-        barcode = service.get_cab_prise_en_charge(infos)
-    except InvalidWeight, e:
-        raise InvalidWeight(WARN_TITLE + e.message)
-    try:
-        barcode = service.get_cab_prise_en_charge(infos)
-    except InvalidWeight, e:
-        raise (WARN_TITLE + e.message)
-    label = {
-        'file_type': 'zpl2',
-        'name': 'File name' + '.zpl',
-    }
+        prise_en_charge_barcode = service.get_cab_prise_en_charge(infos)
+    except (InvalidWeight, Exception) as e:
+        raise WARN % e.message
+
+    delivery = {
+        'weight': parcel_weight, 'date': '22/06/2014',
+        'ref_client': u'OUT/00033', 'Instructions': '',
+        'cab_suivi': tracking_ref,
+        'cab_prise_en_charge': prise_en_charge_barcode,
+        }
+
+
     try:
         # sender, delivery, address and option are dict contains datas
         # used to generate label in ZPL format (Zebra Programming Language)
-        label['file'] = service.get_label(
+        label_file = service.get_label(
             sender, delivery, address, option)
-        # label['file'] has a content coded in UTF8
         # you can send these datas to your zebra printer
-    except (InvalidDataForMako, InvalidKeyInTemplate, InvalidMissingField), e:
-        raise (WARN_TITLE + e.message)
-    except Exception, e:
-        raise Exception("'Colissimo and So' Library Error :\n" + e.message)
+    except (InvalidDataForMako,
+            InvalidKeyInTemplate,
+            InvalidWebServiceRequest,
+            InvalidKeyInTemplate,
+            InvalidMissingField) as e:
+        raise WARN % e.message
 
+    print "VOICI L'ETIQUETTE ZPL POUR COLISSIMO France:\n"
+    print "=========================================\n\n\n", label_file
 
 #Specification
 see doc folder

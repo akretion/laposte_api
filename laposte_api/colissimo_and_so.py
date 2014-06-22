@@ -158,12 +158,16 @@ class ColiPoste(AbstractLabel):
         return service, code
 
     def get_cab_suivi(self, sequence):
-        #TODO define how to build sequence
         return sequence + ' ' + str(self.get_ctrl_key(sequence[3:]))
 
-    def _set_unit_test_file_name(self, name=None):
-        if name:
-            self._test_name = name
+    def _set_unit_test_file_name(
+            self, name, sequence, tracking_ref, prise_en_charge):
+        self._test_name = name
+        self._test_first_keys = {
+            'sequence': sequence,
+            'tracking_ref': tracking_ref,
+            'prise_en_charge': prise_en_charge,
+        }
 
     def get_label(self, sender, delivery, address, option):
         sender.update({'account': self._account})
@@ -231,12 +235,13 @@ class ColiPoste(AbstractLabel):
             import tempfile
             path = tempfile.gettempdir() + '/' + self._test_name + '.py'
             full_content = '# -*- coding: utf-8 -*-\n\n'
-            full_content += 'delivery=' + str(delivery) + '\n\n'
-            full_content += 'sender=' + str(sender) + '\n\n'
-            full_content += 'address=' + str(address) + '\n\n'
-            full_content += 'option=' + str(option) + '\n\n'
-            full_content += 'kwargs=' + str(kwargs) + '\n\n'
-            full_content += 'content="""' + file_content + '"""'
+            full_content += 'first_keys = ' + str(self._test_first_keys) + '\n\n'
+            full_content += 'delivery = ' + str(delivery) + '\n\n'
+            full_content += 'sender = ' + str(sender) + '\n\n'
+            full_content += 'address = ' + str(address) + '\n\n'
+            full_content += 'option = ' + str(option) + '\n\n'
+            full_content += 'kwargs = ' + str(kwargs) + '\n\n'
+            full_content += 'content = """' + file_content + '"""'
             with open(path, 'w') as wf:
                 wf.write(full_content)
         except:
@@ -627,7 +632,6 @@ class Colissimo(ColiPoste):
                 sum_odd += int(number)
             for number in pair:
                 sum_pair += int(number)
-
             my_sum = sum_odd * 3 + sum_pair
             result = (my_sum // 10 + 1) * 10 - my_sum
             if result == 10:
@@ -840,7 +844,6 @@ class SoColissimo(ColiPoste):
             CS *= 2
             if CS > MOD:
                 CS = CS - MOD - 1
-            #print i, Y
         CS = MOD + 1 - CS
         if CS == MOD:
             CS = 0
