@@ -100,6 +100,21 @@ def is_digit(s):
     return re.search("[^0-9]", s) is None
 
 
+class ColiPosteConfig(object):
+    def __init__(self):
+        pass
+
+    def get_image_data(self):
+        logo_file_path = os.path.join(os.path.dirname(__file__), 'logo')
+        file_data = ''
+        for grf_file in os.listdir(logo_file_path):
+            if grf_file.endswith(".GRF"):
+                with open(grf_file) as f:
+                    file_data += '\n' + f.read()
+        import pdb;pdb.set_trace()
+        return file_data
+
+
 class ColiPoste(AbstractLabel):
     _account = None
     _service = None
@@ -369,8 +384,12 @@ class WSInternational(ColiPoste):
     def extract_responses_messages(self, result):
         response = []
         for mess in result.message:
-            response.append(
-                {'type': mess.type, 'id': mess.id, 'libelle': mess.libelle})
+            if isinstance(mess, dict):
+                formated_mess = str(mess)
+            else:
+                formated_mess = {
+                    'type': mess.type, 'id': mess.id, 'libelle': mess.libelle}
+            response.append(formated_mess)
         return response
 
     def _set_service(self, client):
