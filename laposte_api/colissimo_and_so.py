@@ -105,13 +105,13 @@ class ColiPosteConfig(object):
         pass
 
     def get_image_data(self):
-        logo_file_path = os.path.join(os.path.dirname(__file__), 'logo')
+        logo_file_folder = os.path.join(os.path.dirname(__file__), 'logo')
         file_data = ''
-        for grf_file in os.listdir(logo_file_path):
+        for grf_file in os.listdir(logo_file_folder):
             if grf_file.endswith(".GRF"):
-                with open(grf_file) as f:
-                    file_data += '\n' + f.read()
-        import pdb;pdb.set_trace()
+                logo_file_path = os.path.join(logo_file_folder, grf_file)
+                with open(logo_file_path) as f:
+                    file_data += f.read()
         return file_data
 
 
