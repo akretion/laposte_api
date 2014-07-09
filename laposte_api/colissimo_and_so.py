@@ -1,7 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
-#TODO define possible/mandatory option / label
+##############################################################################
+#
+#  licence AGPL version 3 or later
+#  see licence in  http://www.gnu.org/licenses/agpl-3.0.txt
+#  Copyright (C) 2014 Akretion (http://www.akretion.com).
+#  @author David BEAL <david.beal@akretion.com>
+#
+##############################################################################
 
 """
 To know which keys to send to this library read these lists :
