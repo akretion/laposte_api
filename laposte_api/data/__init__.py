@@ -12,4 +12,6 @@ import colissimo_7Q_camet12     #noqa
 import colissimo_7Q_anht33      #noqa
 import colissimo_7Q_anht23      #noqa
 import colissimo_7Q_camet14     #noqa
+import colissimo_8Q_stou2       #noqa
+import colissimo_8Q_ahj2        #noqa
 

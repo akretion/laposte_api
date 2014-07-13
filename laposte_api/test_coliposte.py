@@ -16,6 +16,8 @@ from .data import (
     colissimo_7Q_anht33,
     colissimo_7Q_anht23,
     colissimo_7Q_camet14,
+    colissimo_8Q_ahj2,
+    colissimo_8Q_stou2,
 )
 
 
@@ -29,6 +31,7 @@ class ColissimoTest(unittest2.TestCase):
         pass
 
     def run_test(self, par):
+        #from .data import par  # dynamic import
         service = ColiPoste(par.sender['account']).get_service(
             'colissimo', par.kwargs['_product_code'])
         label = service.get_label(par.sender, par.delivery, par.address, par.option)
@@ -68,6 +71,12 @@ class ColissimoTest(unittest2.TestCase):
         self.call_test(current_function())
 
     def test_label_7Q_camet14(self):
+        self.call_test(current_function())
+
+    def test_label_8Q_ahj2(self):
+        self.call_test(current_function())
+
+    def test_label_8Q_stou2(self):
         self.call_test(current_function())
 
 
