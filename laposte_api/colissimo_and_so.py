@@ -391,11 +391,11 @@ class WSInternational(ColiPoste):
         response = []
         for mess in result.message:
             if isinstance(mess, dict):
-                formated_mess = str(mess)
+                formated_mess = mess
             else:
                 formated_mess = {
-                    'type': mess.type, 'id': mess.id, 'libelle': mess.libelle}
-            response.append(formated_mess)
+                    'type': mess.type, 'id': mess.id, 'libelle': mess.libelle.encode('utf8)')}
+            response.append(str(formated_mess))
         return response
 
     def _set_service(self, client):
