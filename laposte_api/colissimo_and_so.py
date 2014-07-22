@@ -190,7 +190,7 @@ class ColiPoste(AbstractLabel):
             'prise_en_charge': prise_en_charge,
         }
 
-    def get_label(self, sender, delivery, address, option):
+    def get_label(self, sender, delivery, address, option, return_request=False):
         sender.update({'account': self._account})
         if self._product_code in ['7Q', '8Q']:
             infos = {
@@ -316,7 +316,7 @@ class ColiPoste(AbstractLabel):
 
 class WSInternational(ColiPoste):
 
-    def get_label(self, sender, delivery, address, option):
+    def get_label(self, sender, delivery, address, option, return_request=False):
         infos = {
             'password': {'required': True},
             'phone': {'required': True},
@@ -337,10 +337,12 @@ class WSInternational(ColiPoste):
         letter.dest = dest
         exp = client.factory.create('ExpEnvVO')
         exp.addressVO = self._set_address_exp(client, sender)
-        if 'name' in delivery:
-            exp.ref = delivery['name']
+        if 'ref_client' in delivery:
+            exp.ref = delivery['ref_client']
         letter.exp = exp
         self.unmystify_coliposte_webservice(letter)
+        if return_request:
+            return str(letter)
         return self._send_request(client, letter)
 
     def unmystify_coliposte_webservice(self, letter):
@@ -362,7 +364,7 @@ class WSInternational(ColiPoste):
         """ Wrapper for API requests
         """
         res = {}
-        ws_mess_title = "WebService ColiPoste International\n\n%s"
+        ws_mess_title = "WebService International: \n%s"
         try:
             result = client.service.genererEtiquetteBIC3(letter)
             if hasattr(result, 'file'):
@@ -374,11 +376,19 @@ class WSInternational(ColiPoste):
                 parcelNumberPartner = str(result.parcelNumberPartenaire)
                 return (data, message, parcelNumber, parcelNumberPartner)
             else:
-                message = '\n'.join(self.extract_responses_messages(result))
-                raise InvalidWebServiceRequest(ws_mess_title % message)
+                #TODO choose to remonter L39
+                messages = [self.nicely_dict(elm) for elm
+                            in self.extract_responses_messages(result)]
+                message_str = '\n'.join(messages)
+                raise InvalidWebServiceRequest(message_str)
         except (WebFault, Exception) as e:
             raise InvalidWebServiceRequest(ws_mess_title % e.message)
         return res
+
+    def nicely_dict(self, one_dict):
+        return str(one_dict).replace("{'", "'") \
+                            .replace(", '", "\n'") \
+                            .replace("'}", "'")
 
     def encode_file_data(self, data):
         try:
@@ -390,12 +400,14 @@ class WSInternational(ColiPoste):
     def extract_responses_messages(self, result):
         response = []
         for mess in result.message:
-            if isinstance(mess, dict):
-                formated_mess = mess
-            else:
-                formated_mess = {
-                    'type': mess.type, 'id': mess.id, 'libelle': mess.libelle.encode('utf8)')}
-            response.append(str(formated_mess))
+            infos = mess
+            if not isinstance(mess, dict):
+                infos = {
+                    'type': str(mess.type).encode('utf8'),
+                    'id': str(mess.id).encode('utf8'),
+                    'libelle': mess.libelle.encode('iso-8859-15')}
+                    #'libelle': mess.libelle.encode('utf8')}
+            response.append(infos)
         return response
 
     def _set_service(self, client):
@@ -433,7 +445,9 @@ class WSInternational(ColiPoste):
         if self._product_code == 'SO':
             parc.DeliveryMode = 'DOM'  # or DOM/DOS/CMT/BDP
             parc.RegateCode = ''
-        parc.ReturnReceipt = str(int(option['ar']))
+        #parc.ReturnReceipt = str(int(option['ar']))
+        # 2014-07-16 : change : seems doesn't support ?????
+        parc.ReturnReceipt = False
         parc.Instructions = delivery['Instructions'][:71]
         #TODO manage RegateCode si So Colissimo
         #parc.RegateCode =
@@ -489,7 +503,7 @@ class WSInternational(ColiPoste):
             'DoorCode2': 'door_code2',
             'Interphone': 'intercom',
             'Civility': False,
-            'companyName': False,
+            'companyName': 'name',
         }
         for elm, val in elments.items():
             obj[elm] = ''
