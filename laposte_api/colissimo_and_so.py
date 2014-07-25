@@ -42,6 +42,14 @@ import countries
 from .label_helper import AbstractLabel
 import os
 
+import logging
+#debug
+#logging.basicConfig(level=logging.INFO)
+#logging.getLogger('suds.client').setLevel(logging.DEBUG)
+#logging.getLogger('suds.transport').setLevel(logging.DEBUG)
+#logging.getLogger('suds.xsd.schema').setLevel(logging.DEBUG)
+#logging.getLogger('suds.wsdl').setLevel(logging.DEBUG)
+
 
 WEBSERVICE_URL = 'https://ws.colissimo.fr/soap.shippingclpV2/services/WSColiPosteLetterService?wsdl'
 DEMO = True
@@ -142,6 +150,9 @@ class ColiPoste(AbstractLabel):
             if code in ['EI', 'AI']:
                 service = WSInternational(self._account)
                 service_name = 'ColiPosteInternational'
+                if 'cab_suivi' in DELIVERY_MODEL:
+                    # drop this key in case of existence in the previous call
+                    del DELIVERY_MODEL['cab_suivi']
             else:
                 service = Colissimo(self._account)
                 self._complete_models()
@@ -376,7 +387,6 @@ class WSInternational(ColiPoste):
                 parcelNumberPartner = str(result.parcelNumberPartenaire)
                 return (data, message, parcelNumber, parcelNumberPartner)
             else:
-                #TODO choose to remonter L39
                 messages = [self.nicely_dict(elm) for elm
                             in self.extract_responses_messages(result)]
                 message_str = '\n'.join(messages)
