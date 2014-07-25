@@ -131,8 +131,6 @@ class AbstractLabel(object):
 
     def must_be_checked(self, datas, field):
         res = True
-        #if field == 'street2':
-        #    import pdb;pdb.set_trace()
         if field in datas:
             if type(datas[field]) in [str, unicode, bool]:
                 if datas[field] is False:
