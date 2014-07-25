@@ -30,15 +30,17 @@ class ColissimoTest(unittest2.TestCase):
     def setUp(self):
         pass
 
-    def run_test(self, par):
-        #from .data import par  # dynamic import
-        service = ColiPoste(par.sender['account']).get_service(
-            'colissimo', par.kwargs['_product_code'])
-        label = service.get_label(par.sender, par.delivery, par.address, par.option)
-        self.assertEqual(label, par.content)
+    def run_test(self, script):
+        service = ColiPoste(script.sender['account']).get_service(
+            'colissimo', script.kwargs['_product_code'])
+        label = service.get_label(
+            script.sender, script.delivery, script.address, script.option)
+        self.assertEqual(label, script.content)
 
-    def call_test(self, test_name_suffix):
-        self.run_test(eval('colissimo_' + test_name_suffix[11:]))
+    def call_test(self, test_name_fonction):
+        my_script = 'colissimo_' + test_name_fonction[11:]
+        #name = 'data'
+        self.run_test(eval(my_script))
 
     def test_label_9L_nhas52b(self):
         self.call_test(current_function())
