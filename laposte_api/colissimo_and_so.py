@@ -344,6 +344,7 @@ class WSInternational(ColiPoste):
         letter.service = self._set_service(client)
         letter.parcel = self._set_parcel(client, delivery, option)
         dest = client.factory.create('DestEnvVO')
+        #import pdb;pdb.set_trace()
         dest.addressVO = self._set_address_dest(client, address)
         letter.dest = dest
         exp = client.factory.create('ExpEnvVO')
@@ -529,11 +530,6 @@ class WSInternational(ColiPoste):
             if not countries.datas.get(country_code):
                 raise InvalidCountry(
                     "Country code '%s' doesn't exists. \nCheck your datas"
-                    % country_code)
-            if country_code == 'BE' and self._product_code != 'SO':
-                raise InvalidCountry(
-                    "Belgium destination must use 'SO' "
-                    "product.\nCheck your datas"
                     % country_code)
         elif self._product_code[1:] == 'I':
             raise InvalidCountry("EI/AI label type can't be used for France")
