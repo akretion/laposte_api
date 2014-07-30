@@ -14,9 +14,6 @@
 ^FO0,100^GB770,1,4^FS
 
 ^FO10,130^A0,30^FDEXPEDITEUR
-% if _product_code[1:] == 'Y':
-/ SENDER
-% endif
 ^FS
 % if _product_code in ['9L', '9V', '7Q', '8R', '8Q']:
 ^FO450,130^FDRef Client: ${d['ref_client']}^FS
@@ -34,11 +31,11 @@
 /* COLISS RULE Pays expediteur si OM ou I */
 ^A0,24^FD${s['street']}
 \&
-% if _product_code in ['EY', '8Q', '7Q']:
+% if _product_code in ['8Q', '7Q']:
 TEL: ${s['phone']}
 % endif
 \&${s['zip']} ${s['city']}
-% if _product_code in ['EY', '8Q', '7Q']:
+% if _product_code in ['8Q', '7Q']:
 \&${s['country']}
 % endif
 ^FS
@@ -53,34 +50,19 @@ TEL: ${s['phone']}
 \&Edité le : ${d['date']}
 ^FS
 
-% if _product_code[1:] == 'Y':
-^FO30,330^FDAttention : le colis peut etre ouvert d'office^FS
-% endif
-
 /* ||| || |||| */
 /* >5  => is subset C invocation code ; >6  => is subset B invocation code */
 ^FO40,345^PR2,2^BCN,230,Y,N,N^FD${d['suivi_bar']}^FS
-^FO40,575^GB
-% if _product_code[1:] == 'Y':
-468
-% else:
-402
-% endif
-,3,4^FS
+^FO40,575^GB402,3,4^FS
 
 ^FO0,585^FDN° de colis :^FS
 
-% if _product_code == 'EY':
-^FO470,600^FDEn cas de non livraison,^FS
-/* VARY : you may switch to this mention "renvoyer à l'expéditeur en prioritaire." */
-^FO470,630^FDtraiter le colis abandonné,^FS
-% endif
 
 /* /!\ /_\ /!\ /_\ /!\ */
 % if o['nm']:
 ^FO570,350^XGE:NM,1,1^FS
 % endif
-% if o['ar'] and _product_code in ['7Q', 'CY']:
+% if o['ar'] and _product_code in ['7Q']:
 ^FO570,450^XGE:AR,1,1^FS
 % endif
 % if o['ftd'] and _product_code == '7Q':
@@ -90,15 +72,8 @@ TEL: ${s['phone']}
 /*TODO : Change this condition*/
 ^FO680,350^XGE:CRBT,1,1^FS
 % endif
-% if _product_code == 'EY':
-^FO570,700^XGE:KPGEMS,1,1^FS
-% endif
 
-^FO30,630^A0,30^FDDESTINATAIRE
-% if _product_code[1:] == 'Y':
- / ADDRESSEE
-% endif
-^FS
+^FO30,630^A0,30^FDDESTINATAIRE^FS
 
 ^FO5,660^GB450,200,4^FS
 ^FO30,675^A0,24,28^FD${a['name']}^FS
@@ -107,19 +82,11 @@ TEL: ${s['phone']}
 \&${a['street2']}
 \&${a['street3']}^FS
 ^FO30,755
-% if _product_code[1:] != 'Y':
 ^A0,40
-% endif
 ^FD${a['zip']} ${a['city']}^FS
 
 /* COLISS RULE Phone+country expediteur si Internationale */
-% if _product_code[1:] == 'Y':
-/* only for Y ?*/
 ^FO30,780^FDTEL: ${a['phone']}^FS
-% endif
-% if _product_code[1:] == 'Y':
-^A0,40^FO30,810^FD${a['name']} - ${a['countryCode']}^FS
-% endif
 ^FO0,950^A0B^FDSPECIFIQUE^FS
 
 /* ||| || |||| */
