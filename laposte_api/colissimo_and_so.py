@@ -10,12 +10,6 @@
 ##############################################################################
 
 """
-To know which keys to send to this library read these lists :
-- required fields
-- fields
-
-in __init__ method for company information
-and in manage_required_and_default_field method
 """
 
 from mako.template import Template
@@ -42,7 +36,7 @@ import countries
 from .label_helper import AbstractLabel
 import os
 
-import logging
+#import logging
 #debug
 #logging.basicConfig(level=logging.INFO)
 #logging.getLogger('suds.client').setLevel(logging.DEBUG)
@@ -52,12 +46,8 @@ import logging
 
 
 WEBSERVICE_URL = 'https://ws.colissimo.fr/soap.shippingclpV2/services/WSColiPosteLetterService?wsdl'
-DEMO = True
-#TODO pass the template as an argument
 CODING = 'cp1252'
 ERROR_BEHAVIOR = 'backslashreplace'
-#TODO add a Exception error class
-REQUIRED_FIELDS_ALERT = " /!\ !!! needs a valid value HERE !!! /!\ "
 
 
 PRODUCT_LOGO = {
@@ -281,7 +271,6 @@ class ColiPoste(AbstractLabel):
 
     def print_label(self, printer_name, content):
         #lp -d <zebra_printer> -h 192.168.1.3:631 my_file -o raw
-        #TODO debug
         try:
             from cStringIO import StringIO
         except:
@@ -297,7 +286,6 @@ class ColiPoste(AbstractLabel):
         for opt in ['ftd', 'ar', 'nm']:
             if opt not in option:
                 option[opt] = False
-        #TODO
         return option
 
     def _build_control_key(self, key):
@@ -694,6 +682,10 @@ class Colissimo(ColiPoste):
         print '\n  >>> Code de prise en charge :'
         print 'all labels : control key for \'', prise_en_charge_all,
         print 'string is =>', self.get_ctrl_key(prise_en_charge_all)
+
+
+#TODO add a Exception error class
+REQUIRED_FIELDS_ALERT = " /!\ !!! needs a valid value HERE !!! /!\ "
 
 
 class SoColissimo(ColiPoste):
