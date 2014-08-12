@@ -179,9 +179,6 @@ class ColiPoste(AbstractLabel):
                               % self._label_code[service])
         return service, code
 
-    def get_cab_suivi(self, sequence):
-        return sequence + ' ' + str(self.get_ctrl_key(sequence[3:]))
-
     def _set_unit_test_file_name(
             self, name, sequence, tracking_ref, prise_en_charge):
         self._test_name = name
@@ -193,16 +190,7 @@ class ColiPoste(AbstractLabel):
 
     def get_label(self, sender, delivery, address, option, return_request=False):
         sender.update({'account': self._account})
-        if self._product_code in ['7Q', '8Q']:
-            infos = {
-                'phone': {'required': True},
-                'country': {'required': True},
-            }
-            SENDER_MODEL.update(infos)
-        option.update(self._populate_option_with_default_value(option))
-        self.check_model(sender, SENDER_MODEL, 'sender')
-        self.check_model(delivery, DELIVERY_MODEL, 'delivery')
-        self.check_model(address, ADDRESS_MODEL, 'address')
+        self.complete_and_check_datas(sender, delivery, address, option)
         pec = delivery['cab_prise_en_charge']
         pec_bar = pec[:9].replace(' ', '') + '>5' + pec[9:].replace(' ', '')
         delivery.update({'pec_bar': pec_bar})
@@ -219,11 +207,14 @@ class ColiPoste(AbstractLabel):
             '_product_code': self._product_code,
             'logo': PRODUCT_LOGO[self._product_code],
         }
+        kwargs = self._complete_kwargs(kwargs)
+        return self.get_populated_label(delivery, sender, address, option, kwargs)
+
+    def get_populated_label(self, delivery, sender, address, option, kwargs):
         zpl_file = self._service
         if self._product_code in ['6MA']:
-            zpl_file = self._product_codeq
+            zpl_file = self._product_code
         zpl_file = zpl_file + '.mako'
-
         zpl_file_path = os.path.join(
             os.path.dirname(__file__),
             'report',
@@ -288,6 +279,34 @@ class ColiPoste(AbstractLabel):
                 option[opt] = False
         return option
 
+    def _get_zip_country(self, zip_code=None, country_code=None):
+        if zip_code:
+            zip_country = zip_code
+            if self._product_code[1:] != 'I':
+                if len(zip_code) != 5:
+                    raise InvalidZipCode(
+                        "Address zip '%s' must have a size "
+                        "of 5 chars for french destination"
+                        % zip_code)
+            else:
+                # no more used
+                if len(zip_code) < 3:
+                    raise InvalidZipCode(
+                        "International Address zip '%s' "
+                        "must have a minimum size of 3 chars"
+                        % zip_code)
+                # Need country prefix for international colissimo
+                # TODO check if code has 2 letters
+                if country_code:
+                    zip_country = country_code + zip_code[0:3]
+                else:
+                    raise InvalidCountry(
+                        "'Address country' must not be empty' "
+                        "for international Colissimo")
+        else:
+            raise InvalidZipCode("'Address zip' must not be empty'")
+        return zip_country
+
     def _build_control_key(self, key):
         #remove space
         key = key.replace(' ', '')
@@ -311,6 +330,55 @@ class ColiPoste(AbstractLabel):
         if result == 10:
             result = 0
         return str(result)
+
+    def get_cab_suivi(self, sequence):
+        if type(sequence) not in [unicode, str]:
+            raise InvalidSequence("The sequence must be an str or an unicode")
+        #TODO fix check
+        #if not sequence.isdigit():
+        #    raise InvalidSequence("Only digit char are authoried for"
+        #                          " the sequence")
+        return sequence + ' ' + str(self.get_ctrl_key(sequence[3:]))
+
+    def get_ctrl_key(self, key):
+        warning = "Invalid control key '%s' in get_ctrl_key function"
+        if type(key) not in [unicode, str]:
+            raise InvalidType(warning + ": must be a string" % key)
+            return False
+        if type(key) == unicode:
+            key = str(key)
+        #extract spaces
+        key = key.replace(' ', '')
+        length = [8, 10, 15]
+        #check len
+        if len(key) not in length:
+            raise InvalidValueNotInList(warning + ": key length must be in %s"
+                                        % (key, length))
+        # check chars content
+        if not key.isdigit():
+            raise InvalidValue(warning + ": only digit chars are allowed" % key)
+        # reverse string order
+        key = key[::-1]
+        if len(key) in [10, 15]:
+            pair, odd = [], []
+            sum_pair, sum_odd = 0, 0
+            my_count = 0
+            for arg in key:
+                my_count += 1
+                if my_count % 2 == 0:
+                    pair.append(arg)
+                else:
+                    odd.append(arg)
+
+            for number in odd:
+                sum_odd += int(number)
+            for number in pair:
+                sum_pair += int(number)
+            my_sum = sum_odd * 3 + sum_pair
+            result = (my_sum // 10 + 1) * 10 - my_sum
+            if result == 10:
+                result = 0
+        return result
 
 
 class WSInternational(ColiPoste):
@@ -526,6 +594,22 @@ class WSInternational(ColiPoste):
 
 class Colissimo(ColiPoste):
 
+    def complete_and_check_datas(self, sender, delivery, address, option):
+        if self._product_code in ['7Q', '8Q']:
+            infos = {
+                'phone': {'required': True},
+                'country': {'required': True},
+            }
+            SENDER_MODEL.update(infos)
+        option.update(self._populate_option_with_default_value(option))
+        self.check_model(sender, SENDER_MODEL, 'sender')
+        self.check_model(delivery, DELIVERY_MODEL, 'delivery')
+        self.check_model(address, ADDRESS_MODEL, 'address')
+        return True
+
+    def _complete_kwargs(self, kwargs):
+        return kwargs
+
     def get_cab_prise_en_charge(self, infos):
         # ordre de tri
         order = '1'
@@ -604,73 +688,6 @@ class Colissimo(ColiPoste):
                 option[opt] = False
         return option
 
-    def _get_zip_country(self, zip_code=None, country_code=None):
-        if zip_code:
-            zip_country = zip_code
-            if self._product_code[1:] != 'I':
-                if len(zip_code) != 5:
-                    raise InvalidZipCode(
-                        "Address zip '%s' must have a size "
-                        "of 5 chars for french destination"
-                        % zip_code)
-            else:
-                if len(zip_code) < 3:
-                    raise InvalidZipCode(
-                        "International Address zip '%s' "
-                        "must have a minimum size of 3 chars"
-                        % zip_code)
-                # Need country prefix for international colissimo
-                # TODO check if code has 2 letters
-                if country_code:
-                    zip_country = country_code + zip_code[0:3]
-                else:
-                    raise InvalidCountry(
-                        "'Address country' must not be empty' "
-                        "for international Colissimo")
-        else:
-            raise InvalidZipCode("'Address zip' must not be empty'")
-        return zip_country
-
-    def get_ctrl_key(self, key):
-        warning = "Invalid control key '%s' in get_ctrl_key function"
-        if type(key) not in [unicode, str]:
-            raise InvalidType(warning + ": must be a string" % key)
-            return False
-        if type(key) == unicode:
-            key = str(key)
-        #extract spaces
-        key = key.replace(' ', '')
-        length = [8, 10, 15]
-        #check len
-        if len(key) not in length:
-            raise InvalidValueNotInList(warning + ": key length must be in %s"
-                                        % (key, length))
-        # check chars content
-        if not key.isdigit():
-            raise InvalidValue(warning + ": only digit chars are allowed" % key)
-        # reverse string order
-        key = key[::-1]
-        if len(key) in [10, 15]:
-            pair, odd = [], []
-            sum_pair, sum_odd = 0, 0
-            my_count = 0
-            for arg in key:
-                my_count += 1
-                if my_count % 2 == 0:
-                    pair.append(arg)
-                else:
-                    odd.append(arg)
-
-            for number in odd:
-                sum_odd += int(number)
-            for number in pair:
-                sum_pair += int(number)
-            my_sum = sum_odd * 3 + sum_pair
-            result = (my_sum // 10 + 1) * 10 - my_sum
-            if result == 10:
-                result = 0
-        return result
-
     def test_colissmo(self):
         suivi_7Q_8V_9V_8L_9L = '20524 75203'
         prise_en_charge_all = '900 001 0860 00003'
@@ -684,143 +701,100 @@ class Colissimo(ColiPoste):
         print 'string is =>', self.get_ctrl_key(prise_en_charge_all)
 
 
-#TODO add a Exception error class
-REQUIRED_FIELDS_ALERT = " /!\ !!! needs a valid value HERE !!! /!\ "
-
-
 class SoColissimo(ColiPoste):
 
-    def __init__(self, company):
-        required_fields = [
-            'name',
-            'street',
-            'street2',
-            'zip',
-            'city',
-            'account',
-            'center_support_city',
-        ]
-        fields = [
-            'phone',
-            'account_chargeur',
-        ]
-        fields.extend(required_fields)
-        self.check_required_and_set_default(fields, company, required_fields)
-        self.company = company
+    _dropoff_site = None
 
-    def get_cab_suivi(self, delivery):
-        control_key = self._build_control_key(delivery['sequence'])
-        return "%s %s %s" % (delivery['product_code'],
-                             delivery['sequence'],
-                             control_key)
+    def complete_and_check_datas(self, sender, delivery, address, option):
+        infos = {
+            # TODO: is required ?
+            'phone': {'required': True},
+        }
+        if self._product_code in ['6J']:
+            infos['chargeur'] = {'required': True}
+        SENDER_MODEL.update(infos)
+        ADDRESS_MODEL.update({
+            # TODO check with SO Belgium
+            "zip": {'required': True},
+            })
+        # TODO also validate the final partner zip
+        self._get_zip_country(address['zip'])
+        delivery['livraison_hors_domicile'] = ''
+        if self._product_code not in ['6A', '6C', '6K']:
+            # produit colis 'mon domicile'
+            delivery['livraison_hors_domicile'] = address['name'] + '\n\&'
+        #delivery['suivi_barcode'] = self.get_cab_suivi(delivery)
+        #if self._product_code not in ['6A', '6C', '6K']:
+        #    delivery['prise_en_charge_barcode'] = self.get_cab_prise_en_charge(
+        #        delivery, sender, self._dropoff_site)
+        if self._product_code == '6MA':
+            delivery['routage_barcode'] = self.routage_barcode(
+                delivery, self._dropoff_site)
+            delivery['routage_barcode_full'] = \
+                delivery['routage_barcode'].replace(' ', '')
+        DELIVERY_MODEL.update({
+            #"weight": {'required': True, 'max_number': 30},
+            #"sequence": {'required': True, 'max_size': 10, 'min_size': 10},
+            })
+        option.update(self._populate_option_with_default_value(option))
+        self.check_model(sender, SENDER_MODEL, 'sender')
+        self.check_model(delivery, DELIVERY_MODEL, 'delivery')
+        self.check_model(address, ADDRESS_MODEL, 'address')
+        #    "cab_suivi": delivery['suivi_barcode'],
+        #    "cab_prise_en_charge": delivery['prise_en_charge_barcode'],
+        #    "routage_barcode": kwargs.get('routage_barcode'),
+        return True
 
-    def get_cab_prise_en_charge(self, delivery, company, dropoff_site, label):
-        prod_code = delivery['product_code']
-        if label.code == '6MA':
+    def _set_dropoff_site(self, dropoff_site):
+        self._dropoff_site = dropoff_site
+
+    def _complete_kwargs(self, kwargs):
+        # logo avec signature
+        kwargs['signature'] = 'SIGNA'
+        if self._product_code == '6A':
+            # sans signature
+            kwargs['signature'] = 'SIGNS'
+        # relative positionning element
+        kwargs['vertical_text_box_width'] = 170
+        kwargs['vertical_text_box_height'] = 290
+        kwargs['vertical_text_pos_Y_suffix'] = 50
+        if self._product_code in ['6H', '6M']:
+            kwargs['vertical_text_pos_X'] = 560
+            kwargs['vertical_text_pos_Y'] = 360
+        elif self._product_code == '6J':
+            kwargs['vertical_text_pos_X'] = 480
+            kwargs['vertical_text_pos_Y'] = 570
+        elif self._product_code in ['6A', '6C', '6K']:
+            kwargs['vertical_text_pos_X'] = 590
+            kwargs['vertical_text_pos_Y'] = 570
+            kwargs['vertical_text_box_width'] = 140
+            kwargs['vertical_text_pos_Y_suffix'] = 10
+        return kwargs
+
+    #def get_cab_prise_en_charge(self, delivery, sender, dropoff_site):
+    def get_cab_prise_en_charge(self, infos):
+        if self._product_code == '6MA':
             zip_code = '91500'
-        elif prod_code in ['6J', '6H', '6M']:
-            zip_code = dropoff_site['zip']
+        elif self._product_code in ['6J', '6H', '6M']:
+            zip_code = infos['zip']
         else:
             #TODO FIXME wrong for dropoffsite
-            zip_code = delivery['address']['zip']
+            zip_code = infos['zip']
         barcode = (
-            delivery['product_code']
+            self._product_code
             + '1 '
             + zip_code
             + ' '
-            + company['account']
-            + " %04d " % (delivery['weight'] * 100)
+            + self._account
+            + " %04d " % (infos['weight'] * 100)
             #TODO support insurance
             + "00"
-            + "%d" % delivery['nm'] # non_machinable
+            + "%d" % infos.get('nm', 0) # non_machinable
             + "0"
-            + delivery['suivi_barcode'][12]
+            + infos['carrier_track'][12]
         )
         barcode += self._build_control_key(barcode[10:])
         return barcode
-
-    def _validate_data(self, delivery, dropoff_site):
-        #TODO validate also the dropsite zip
-        if len(delivery['zip']) != 5:
-            raise InvalidZipCode("Invalid zip code %s for France"
-                                 % delivery['zip'])
-        if delivery['weight'] > 30:
-            raise InvalidWeight(
-                "Invalid weight intead '%s' is superior to 30Kg"
-                % delivery['weight'])
-        if type(delivery['sequence']) not in [unicode, str]:
-            raise InvalidSequence("The sequence must be an str or an unicode")
-        if len(delivery['sequence']) != 10:
-            raise InvalidSequence("The sequence len must be 10 instead of %s"
-                                  % len(delivery['sequence']))
-        if not delivery['sequence'].isdigit():
-            raise InvalidSequence("Only digit char are authoried for"
-                                  " the sequence")
-        try:
-            datetime.strptime(delivery['date'], '%d/%m/%Y')
-        except ValueError:
-            raise InvalidDate('The date must be at the format %d/%m/%Y')
-
-    def get_label(self, label, delivery, dropoff_site):
-        self._validate_data(delivery, dropoff_site)
-        product_code = delivery['product_code']
-        self.manage_required_and_default_field(delivery, dropoff_site)
-        # direct key values
-        kwargs = {'product_code': product_code, 'livraison_hors_domicile': ''}
-        if product_code == '6J':
-            if self.company['account_chargeur'] == '':
-                kwargs['account_chargeur'] = REQUIRED_FIELDS_ALERT
-            else:
-                kwargs['account_chargeur'] = self.company['account_chargeur']
-        # image 'France métropolitaine remise ...'
-        if product_code == '6A':
-            # sans signature
-            kwargs['signature'] = 'SIGNS'
-        else:
-            # avec signature
-            kwargs['signature'] = 'SIGNA'
-        if product_code not in ['6A', '6C', '6K']:
-            # produit colis 'mon domicile'
-            kwargs['livraison_hors_domicile'] = delivery['address']['name'] \
-                + '\n\&'
-        kwargs['logo'] = PRODUCT_LOGO[product_code]
-
-        delivery['suivi_barcode'] = self.get_cab_suivi(delivery)
-        delivery['prise_en_charge_barcode'] = \
-            self.get_cab_prise_en_charge(
-                delivery, self.company, dropoff_site, label)
-
-        if label.code == '6MA':
-            kwargs['routage_barcode'] = self.routage_barcode(
-                delivery, dropoff_site)
-            kwargs['routage_barcode_full'] = kwargs['routage_barcode'].replace(
-                ' ', '')
-        else:
-            # relative positionning element
-            kwargs['vertical_text_box_width'] = 170
-            kwargs['vertical_text_box_height'] = 290
-            kwargs['vertical_text_pos_Y_suffix'] = 50
-            if product_code in ['6H', '6M']:
-                kwargs['vertical_text_pos_X'] = 560
-                kwargs['vertical_text_pos_Y'] = 360
-            elif product_code == '6J':
-                kwargs['vertical_text_pos_X'] = 480
-                kwargs['vertical_text_pos_Y'] = 570
-            elif product_code in ['6A', '6C', '6K']:
-                kwargs['vertical_text_pos_X'] = 590
-                kwargs['vertical_text_pos_Y'] = 570
-                kwargs['vertical_text_box_width'] = 140
-                kwargs['vertical_text_pos_Y_suffix'] = 10
-
-        zpl = Template(label.data).render(
-            c=self.company, d=delivery, ds=dropoff_site, **kwargs)
-        content = zpl.encode(encoding=CODING, errors=ERROR_BEHAVIOR)
-        return {
-            "zpl": content,
-            "cab_suivi": delivery['suivi_barcode'],
-            "cab_prise_en_charge": delivery['prise_en_charge_barcode'],
-            "routage_barcode": kwargs.get('routage_barcode'),
-        }
 
     #TODO FIXME should raise an error when fields are required
     #Also find a better way for empty fields
@@ -830,41 +804,38 @@ class SoColissimo(ColiPoste):
         fields = ['street2', 'street3', 'street4', 'door_code',
                   'door_code2', 'intercom', 'mobile', 'phone']
         fields.extend(required_fields)
-        self.check_required_and_set_default(
-            fields, delivery['address'], required_fields)
+        #self.check_required_and_set_default(
+        #    fields, delivery['address'], required_fields)
         # delivery
         required_fields = ['custom_shipping_ref', 'date', 'weight', 'sequence']
-        fields = ['street2', 'street3', 'street4', 'phone', 'non_mecanisable']
+        fields = ['street2', 'street3', 'street4', 'phone']
         fields.extend(required_fields)
-        self.check_required_and_set_default(fields, delivery, required_fields)
+        #self.check_required_and_set_default(fields, delivery, required_fields)
 
-        if delivery['product_code'] in ['6M', '6J', '6H']:
+        if self._product_code in ['6M', '6J', '6H']:
             # dropoff_site
             required_fields = ['street', 'zip', 'city']
             fields = ['street2', 'street3', 'phone', 'name']
             fields.extend(required_fields)
-            self.check_required_and_set_default(
-                fields, dropoff_site, required_fields)
+            #self.check_required_and_set_default(
+            #    fields, dropoff_site, required_fields)
         return True
 
-    def check_required_and_set_default(self, fields, dicto, required_fields):
-        for field in fields:
-            if field not in dicto or dicto[field] is False:
-                if field in required_fields:
-                    raise InvalidMissingField("Required field '%s' is missing"
-                                              % field)
-                else:
-                    dicto[field] = ''
-        return True
+    def _populate_option_with_default_value(self, option):
+        for opt in ['nm']:
+            if opt not in option:
+                option[opt] = False
+        return option
 
     def routage_barcode(self, delivery, dropoff_site):
-        zip = dropoff_site['zip'].zfill(7)
-        suivi_barcode = delivery['suivi_barcode'].replace(' ', '')
-        barcode = '%' + zip[:4] + ' ' + zip[4:] + '6 '
-        barcode += suivi_barcode[1:5] + ' ' + suivi_barcode[5:9]
-        barcode += ' ' + suivi_barcode[9:13] + ' 0849 250'
-        openbar_var = barcode + self.routage_get_ctrl_key(barcode.replace(
-            ' ', ''))
+        if self._product_code not in ['6A', '6C', '6K']:
+            zip = dropoff_site['zip'].zfill(7)
+            suivi_barcode = delivery['suivi_barcode'].replace(' ', '')
+            barcode = '%' + zip[:4] + ' ' + zip[4:] + '6 '
+            barcode += suivi_barcode[1:5] + ' ' + suivi_barcode[5:9]
+            barcode += ' ' + suivi_barcode[9:13] + ' 0849 250'
+            openbar_var = barcode + self.routage_get_ctrl_key(
+                barcode.replace(' ', ''))
         return openbar_var
 
     def routage_get_ctrl_key(self, barcode):
@@ -885,3 +856,98 @@ class SoColissimo(ColiPoste):
         if CS == MOD:
             CS = 0
         return CAR[CS]
+
+    def _validate_data(self, delivery, dropoff_site):
+        ''
+        #if len(delivery['zip']) != 5:
+        #    raise InvalidZipCode("Invalid zip code %s for France"
+        #                         % delivery['zip'])
+        #if delivery['weight'] > 30:
+        #    raise InvalidWeight(
+        #        "Invalid weight intead '%s' is superior to 30Kg"
+        #        % delivery['weight'])
+        #if len(delivery['sequence']) != 10:
+        #    raise InvalidSequence("The sequence len must be 10 instead of %s"
+        #                          % len(delivery['sequence']))
+        #try:
+        #    datetime.strptime(delivery['date'], '%d/%m/%Y')
+        #except ValueError:
+        #    raise InvalidDate('The date must be at the format %d/%m/%Y')
+
+    #def get_cab_suivi(self, delivery):
+    #    control_key = self._build_control_key(delivery['sequence'])
+    #    return "%s %s %s" % (delivery['product_code'],
+    #                         delivery['sequence'],
+    #                         control_key)
+
+    def check_required_and_set_default(self, fields, dicto, required_fields):
+        for field in fields:
+            if field not in dicto or dicto[field] is False:
+                if field in required_fields:
+                    raise InvalidMissingField("Required field '%s' is missing"
+                                              % field)
+                else:
+                    dicto[field] = ''
+        return True
+
+    #def get_label(self, label, delivery, dropoff_site):
+    #    product_code = delivery['product_code']
+    #    #self.manage_required_and_default_field(delivery, dropoff_site)
+        # direct key values
+        #kwargs = {'product_code': product_code, 'livraison_hors_domicile': ''}
+        #if product_code == '6J':
+        #    if self.company['account_chargeur'] == '':
+        #        kwargs['account_chargeur'] = REQUIRED_FIELDS_ALERT
+        #    else:
+        #        kwargs['account_chargeur'] = self.company['account_chargeur']
+        # image 'France métropolitaine remise ...'
+        #if product_code == '6A':
+        #    # sans signature
+        #    kwargs['signature'] = 'SIGNS'
+        #else:
+        #    # avec signature
+        #    kwargs['signature'] = 'SIGNA'
+        #if product_code not in ['6A', '6C', '6K']:
+        #    # produit colis 'mon domicile'
+        #    kwargs['livraison_hors_domicile'] = delivery['address']['name'] \
+        #        + '\n\&'
+        #kwargs['logo'] = PRODUCT_LOGO[product_code]
+
+        #delivery['suivi_barcode'] = self.get_cab_suivi(delivery)
+        #if self._product_code not in ['6A', '6C', '6K']:
+        #    delivery['prise_en_charge_barcode'] = \
+        #            self.get_cab_prise_en_charge(
+        #                delivery, self.company, dropoff_site, label)
+
+        #if label.code == '6MA':
+        #    kwargs['routage_barcode'] = self.routage_barcode(
+        #        delivery, dropoff_site)
+        #    kwargs['routage_barcode_full'] = kwargs['routage_barcode'].replace(
+        #        ' ', '')
+        #else:
+        #    # relative positionning element
+        #    kwargs['vertical_text_box_width'] = 170
+        #    kwargs['vertical_text_box_height'] = 290
+        #    kwargs['vertical_text_pos_Y_suffix'] = 50
+        #    if product_code in ['6H', '6M']:
+        #        kwargs['vertical_text_pos_X'] = 560
+        #        kwargs['vertical_text_pos_Y'] = 360
+        #    elif product_code == '6J':
+        #        kwargs['vertical_text_pos_X'] = 480
+        #        kwargs['vertical_text_pos_Y'] = 570
+        #    elif product_code in ['6A', '6C', '6K']:
+        #        kwargs['vertical_text_pos_X'] = 590
+        #        kwargs['vertical_text_pos_Y'] = 570
+        #        kwargs['vertical_text_box_width'] = 140
+        #        kwargs['vertical_text_pos_Y_suffix'] = 10
+
+        #zpl = Template(label.data).render(
+        #    c=self.company, d=delivery, ds=dropoff_site, **kwargs)
+        #content = zpl.encode(encoding=CODING, errors=ERROR_BEHAVIOR)
+        #return {
+        #    "zpl": content,
+        #    "cab_suivi": delivery['suivi_barcode'],
+        #    "cab_prise_en_charge": delivery['prise_en_charge_barcode'],
+        #    "routage_barcode": kwargs.get('routage_barcode'),
+        #}
+
