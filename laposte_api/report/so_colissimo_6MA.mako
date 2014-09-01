@@ -15,7 +15,7 @@
 % if _product_code != '':
 ^FO0,90^GB770,1,4^FS   /*ligne sous image du haut */
 ^FO470,110^A0,30^FDEXPEDITEUR^FS
-^FO5,110^FDRef Client: ${d['custom_shipping_ref']}^FS
+^FO5,110^FDRef Client: ${d['ref_client']}^FS
 /*GB:graphic box|width,height,thickness*/
 ^FO460,145^GB310,160,4^FS     /*bloc expediteur*/
 /*graphic diagonal line:width,height,border_thickness,,orientation(R=right diagonal)*/
@@ -34,19 +34,19 @@
 ^FB400,6,3,
 ^FDCOMPTE CLIENT: ${s['account']}
 \&SITE DE PRISE EN CHARGE:
-\&${s['center_support_city']} PFC
-\&N° Colis : ${d['suivi_barcode']}
+\&${s['support_city']} PFC
+\&N° Colis : ${d['cab_suivi']}
 \&Poids   : ${d['weight']} kg
 \&Edité le : ${d['date']}
 ^FS
 
 /* ||| || |||| */
 /* >5  => is subset C invocation code ; >6  => is subset B invocation code */
-% if len(d['suivi_barcode']) > 1 :
-^FO25,140^PR2,2^BCN,230,N,N,N^FD${d['suivi_barcode'][:4].replace(' ','') + '>5'}${d['suivi_barcode'][4:].replace(' ','')}^FS
+% if len(d['suivi_bar']) > 1 :
+^FO25,140^PR2,2^BCN,230,N,N,N^FD${d['suivi_bar'][:4].replace(' ','') + '>5'}${d['suivi_bar'][4:].replace(' ','')}^FS
 ^FO25,370^GB402,3,4^FS  /*ligne sous code barre*/
 % endif
-^FO70,380^FDN° de colis : ${d['suivi_barcode']}^FS
+^FO70,380^FDN° de colis : ${d['suivi_bar']}^FS
 
 /* /!\ /_\ /!\ /_\ /!\ */
 % if o['nm']:
@@ -56,23 +56,23 @@
 ^FO30,410^A0,30^FDDESTINATAIRE^FS
 
 ^FO5,440^GB450,200,4^FS
-^FO25,450^A0,26,26^FD${ds['name']}^FS
+^FO25,450^A0,26,26^FD${a['name']}^FS
 ^FO25,475^FB400,6,2,
-^FD${a['name']}
-\&${ds['street']}
-\&${ds['street2']}
-\&${ds['zip']} ${ds['city']}^FS
+^FD${a['final_address']['name']}
+\&${a['street']}
+\&${a['street2']}
+\&${a['zip']} ${a['city']}^FS
 ^FO25,575^A0,36,46^FD91500^FS
 ^FO155,585^A0,28,38^FDHUB RELAIS^FS
-^FO25,610^A0,18^FDTel : ${a['mobile']}^FS
+^FO25,610^A0,18^FDTel mobile: ${a['final_address']['mobile']}^FS
 
 ^FO0,715^A0B^FDSPECIFIQUE^FS
 
 /* ||| || |||| */
 /* >5  => is subset C invocation code  */
-% if len(d['prise_en_charge_barcode']) > 1 :
-^FO70,650^BCN,230,N,N,N^FD${d['prise_en_charge_barcode'][:9].replace(' ','') + '>5' + d['prise_en_charge_barcode'][9:].replace(' ','') or ''}^FS
-^FO180,890^FDN° PCH:  ${d['prise_en_charge_barcode']}^FS
+% if len(d['pec_bar']) > 1 :
+^FO70,650^BCN,230,N,N,N^FD${d['pec_bar'][:9].replace(' ','') + '>5' + d['pec_bar'][9:].replace(' ','') or ''}^FS
+^FO180,890^FDN° PCH:  ${d['pec_bar']}^FS
 ^FO0,890^XGE:POSTE,1,1^FS
 ^FO720,885^XGE:CAMERA,1,1^FS
 %endif
