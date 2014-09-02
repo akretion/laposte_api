@@ -34,7 +34,7 @@
 ^FB400,6,3,
 ^FDCOMPTE CLIENT: ${s['account']}
 \&SITE DE PRISE EN CHARGE:
-\&${s['support_city']} PFC
+\&${s['support_city']}
 \&N° Colis : ${d['cab_suivi']}
 \&Poids   : ${d['weight']} kg
 \&Edité le : ${d['date']}
@@ -71,8 +71,8 @@
 /* ||| || |||| */
 /* >5  => is subset C invocation code  */
 % if len(d['pec_bar']) > 1 :
-^FO70,650^BCN,230,N,N,N^FD${d['pec_bar'][:9].replace(' ','') + '>5' + d['pec_bar'][9:].replace(' ','') or ''}^FS
-^FO180,890^FDN° PCH:  ${d['pec_bar']}^FS
+^FO70,650^BCN,230,N,N,N^FD${d['pec_bar']}^FS
+^FO180,890^FDN° PCH:  ${d['cab_prise_en_charge']}^FS
 ^FO0,890^XGE:POSTE,1,1^FS
 ^FO720,885^XGE:CAMERA,1,1^FS
 %endif

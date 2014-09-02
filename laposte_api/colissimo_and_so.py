@@ -88,6 +88,7 @@ DELIVERY_MODEL = {
 SENDER_MODEL = {
     "name":         {'required': True},
     "street":       {'required': True},
+    "street2":      {'max_size': 20},
     "zip":          {'required': True},
     "city":         {'required': True},
     "support_city": {'required': True},
@@ -204,7 +205,7 @@ class ColiPoste(AbstractLabel):
             suivi_bar += suivi[4:-2].replace(' ', '') + '>6FR'
         else:
             suivi_bar += suivi[4:].replace(' ', '')
-        delivery.update({'suivi_bar': suivi_bar})
+        delivery['suivi_bar'] = suivi_bar
         # direct key values
         kwargs = {
             '_product_code': self._product_code,
@@ -228,7 +229,7 @@ class ColiPoste(AbstractLabel):
             file_content = opened_file.read()
             self.validate_mako(file_content, delivery, sender, address, option, kwargs)
             try:
-                #print 'd', delivery, '\na', address, '\ns', sender, '\no', kwargs
+                print 'd', delivery, '\na', address, '\ns', sender, '\no', kwargs
                 zpl = Template(file_content).render(
                     d=delivery, s=sender, a=address, o=option, **kwargs)
                 content = zpl.encode(encoding=CODING, errors=ERROR_BEHAVIOR)
@@ -253,19 +254,16 @@ class ColiPoste(AbstractLabel):
             return content
 
     def validate_mako(self, template, *all_dict):
-        print all_dict
         list_of_keys_list = [a_dict.keys() for a_dict in all_dict]
         available_keys = []
         for a_list in list_of_keys_list:
             [available_keys.append(y) for y in a_list]
-        print 'available_keys', available_keys
         import re
         keys2match = []
         rx_search = '\$\{[ads](\[\'final_address\'\])?\[\'(.+?)\'\]\}+'
         for match in re.findall(rx_search, template):
             keys2match.append(match)
         keys2match = [x[1] for x in keys2match]
-        print keys2match
         unmatch = list(set(keys2match) - set(available_keys))
         if len(unmatch) > 0:
             print "\nLabel generation : these keys are defined in mako template",
@@ -753,10 +751,6 @@ class SoColissimo(ColiPoste):
         if self._product_code not in ['6A', '6C', '6K']:
             # produit colis 'mon domicile'
             delivery['livraison_hors_domicile'] = address['name'] + '\n\&'
-        #delivery['suivi_barcode'] = self.get_cab_suivi(delivery)
-        #if self._product_code not in ['6A', '6C', '6K']:
-        #    delivery['prise_en_charge_barcode'] = self.get_cab_prise_en_charge(
-        #        delivery, sender, self._dropoff_site)
         if self._specific_label == '6MA':
             delivery['routage_barcode'] = self.routage_barcode(
                 delivery, address)
@@ -770,6 +764,10 @@ class SoColissimo(ColiPoste):
         self.check_model(sender, SENDER_MODEL, 'sender')
         self.check_model(delivery, DELIVERY_MODEL, 'delivery')
         self.check_model(address, ADDRESS_MODEL, 'address')
+        self._set_final_address(address)
+        return True
+
+    def _set_final_address(self, address):
         # Customer address, in 6M, 6J, 6H, is stored address['final_address']
         FINAL_ADDRESS = {
             'name': {'max_size': 100},
@@ -783,6 +781,7 @@ class SoColissimo(ColiPoste):
             'door_code2': {'max_size': 100},
             'intercom': {'max_size': 100},
             'mobile': {'max_size': 100},
+            'phone': {'max_size': 100},
         }
         final_address = {}
         if 'final_address' in address:

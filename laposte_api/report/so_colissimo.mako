@@ -33,7 +33,7 @@
 ^FB400,6,3,
 ^FDCOMPTE CLIENT: ${s['account']}
 \&SITE DE PRISE EN CHARGE:
-\&${s['support_city']} PFC
+\&${s['support_city']}
 \&N° Colis : ${d['cab_suivi']}
 \&Poids   : ${d['weight']} kg
 \&Edité le : ${d['date']}
@@ -43,9 +43,9 @@
 /* ||| || |||| */
 /* >5  => is subset C invocation code ; >6  => is subset B invocation code */
 % if len(d['suivi_bar']) >1 :
-^FO40,345^PR2,2^BCN,230,N,N,N^FD${d['suivi_bar'][:4].replace(' ','') + '>5'}${d['suivi_bar'][4:].replace(' ','')}^FS
+^FO40,345^PR2,2^BCN,230,N,N,N^FD${d['suivi_bar']}^FS
 ^FO40,575^GB402,3,4^FS
-^FO90,585^FDN° de colis : ${d['suivi_bar']}^FS
+^FO90,585^FDN° de colis : ${d['cab_suivi']}^FS
 
 % if _product_code == '6J':
 ^FO670,370^BY3,,80^BCR,100,N,N,N^FD>:${s['chargeur'][0:1] + '>5'}${s['chargeur'][1:]}^FS
@@ -102,7 +102,7 @@
 ^FDCode porte : ${a['final_address']['door_code']}
 \&Code porte2 : ${a['final_address']['door_code2']}
 \&Interphone : ${a['final_address']['intercom']}
-\&Téléphone Portable: ${a['final_address']['mobile']}
+\&Tél. Portable: ${a['final_address']['mobile']}
 \&Téléphone : ${a['final_address']['phone']}^FS
 % elif _product_code in ['6H', '6M', '6J']:
 ^FDAdresse 1: ${a['final_address']['street']}
@@ -118,8 +118,8 @@
 /* ||| || |||| */
 /* >5  => is subset C invocation code  */
 % if len(d['pec_bar']) > 1:
-^FO70,880^BCN,230,N,N,N^FD${d['pec_bar'] and d['pec_bar'][:9].replace(' ','') + '>5' + d['pec_bar'][9:].replace(' ','') or ''}^FS
-^FO230,1120^FDN° PCH:  ${d['pec_bar']}^FS
+^FO70,880^BCN,230,N,N,N^FD${d['pec_bar']}^FS
+^FO230,1120^FDN° PCH:  ${d['cab_prise_en_charge']}^FS
 ^FO0,1125^XGE:POSTE,1,1^FS
 ^FO720,1120^XGE:CAMERA,1,1^FS
 % endif
