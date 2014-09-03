@@ -83,7 +83,7 @@
 %else:
 
 ^FO30,705^FB400,6,2,
-^FD${livraison_hors_domicile}${a['street']}
+^FD${d['livraison_hors_domicile']}${a['street']}
 \&${a['street2'] or ''}^FS
 ^FO30,780^A0,36,46^FD${a['zip']}^FS
 ^FO160,785^A0,32,26^FD${a['city']}^FS

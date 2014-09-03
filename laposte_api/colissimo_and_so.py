@@ -229,7 +229,7 @@ class ColiPoste(AbstractLabel):
             file_content = opened_file.read()
             self.validate_mako(file_content, delivery, sender, address, option, kwargs)
             try:
-                print 'd', delivery, '\na', address, '\ns', sender, '\no', kwargs
+                #print 'd', delivery, '\na', address, '\ns', sender, '\no', kwargs
                 zpl = Template(file_content).render(
                     d=delivery, s=sender, a=address, o=option, **kwargs)
                 content = zpl.encode(encoding=CODING, errors=ERROR_BEHAVIOR)
@@ -238,20 +238,27 @@ class ColiPoste(AbstractLabel):
                         content, delivery, sender, address, option, kwargs)
             except:
                 traceback = RichTraceback()
-                # allow to define where the file mako fail
-                lineno, arg, error = '', '', ''
-                for (tfilename, tlineno, tfct, ctx) in traceback.traceback:
-                    if tfct == 'render_body':
-                        lineno = str(tlineno)
-                        ctx_error = ctx
-                    elif tfct == '__str__':
-                        error = ctx.replace("u'raise", '')
-                if lineno:
-                    lineno = ' at line ' + lineno
-                raise InvalidDataForMako(
-                    "Mako Template error: '%s'\n%s in '%s':\n\n%s"
-                    % (error, lineno, zpl_file, ctx_error))
+                self.extract_mako_error(traceback, zpl_file)
             return content
+
+    def extract_mako_error(self, traceback, zpl_file):
+        " allow to define where the file mako fail "
+        lineno, arg, error = '', '', ''
+        #import pdb;pdb.set_trace()
+        #for (tfilename, tlineno, tfct, ctx) in traceback.traceback:
+        #    if tfct == 'render_body':
+        #        lineno = str(tlineno)
+        #        ctx_error = ctx
+        #    elif tfct == '__str__':
+        #        error = ctx.replace("u'raise", '')
+        #if lineno:
+        #    lineno = ' at line ' + lineno
+        #raise InvalidDataForMako(
+        #    "Mako Template error: '%s'\n%s in '%s':\n\n%s"
+        #    % (error, lineno, zpl_file, ctx_error))
+        raise InvalidDataForMako(
+            "Mako Template error: \n%s\n\nin %s file"
+            % (traceback.message, zpl_file))
 
     def validate_mako(self, template, *all_dict):
         list_of_keys_list = [a_dict.keys() for a_dict in all_dict]
@@ -300,6 +307,16 @@ class ColiPoste(AbstractLabel):
         os.system('lp -d %s -o raw %s'
                   % (printer_name, file_content.getvalue()))
         file_content.close()
+
+    def _copy2clipboard(self, content):
+        """Allow to copy label content to clipboard"""
+        import pygtk
+        pygtk.require('2.0')
+        import gtk
+        clipboard = gtk.clipboard_get()
+        clipboard.set_text(content)
+        clipboard.store()
+        return True
 
     def _populate_option_with_default_value(self, option):
         for opt in ['ftd', 'ar', 'nm']:
@@ -736,10 +753,8 @@ class SoColissimo(ColiPoste):
             'phone': {'required': True},
             'chargeur': {'max_size': 8}
         }
-        # choice between standard and specific label
-        self._choose_label(delivery)
         if self._product_code in ['6J']:
-            infos['chargeur'] = {'required': True, 'min_size': 8}
+            infos['chargeur'] = {'required': True, 'min_size': 9, 'max_size': 9}
         SENDER_MODEL.update(infos)
         ADDRESS_MODEL.update({
             # TODO check with SO Belgium
@@ -747,15 +762,6 @@ class SoColissimo(ColiPoste):
             })
         # TODO also validate the final partner zip
         self._get_zip_country(address['zip'])
-        delivery['livraison_hors_domicile'] = ''
-        if self._product_code not in ['6A', '6C', '6K']:
-            # produit colis 'mon domicile'
-            delivery['livraison_hors_domicile'] = address['name'] + '\n\&'
-        if self._specific_label == '6MA':
-            delivery['routage_barcode'] = self.routage_barcode(
-                delivery, address)
-            delivery['routage_barcode_full'] = \
-                delivery['routage_barcode'].replace(' ', '')
         DELIVERY_MODEL.update({
             #"weight": {'required': True, 'max_number': 30},
             #"sequence": {'required': True, 'max_size': 10, 'min_size': 10},
@@ -765,6 +771,17 @@ class SoColissimo(ColiPoste):
         self.check_model(delivery, DELIVERY_MODEL, 'delivery')
         self.check_model(address, ADDRESS_MODEL, 'address')
         self._set_final_address(address)
+        delivery['livraison_hors_domicile'] = ''
+        if self._product_code in ['6M', '6J', '6H']:
+            delivery['livraison_hors_domicile'] = address['final_address']['name'] + '\n\&'
+        # choice between standard and specific label
+        self._choose_label(address)
+        if self._specific_label == '6MA':
+            delivery['routage_barcode'] = self.routage_barcode(
+                delivery, address)
+            delivery['routage_barcode_full'] = \
+                delivery['routage_barcode'].replace(' ', '')
+        print '\ndelivery', delivery
         return True
 
     def _set_final_address(self, address):
@@ -790,11 +807,11 @@ class SoColissimo(ColiPoste):
         address['final_address'] = final_address
         return True
 
-    def _choose_label(self, delivery):
+    def _choose_label(self, address):
         if (self._product_code == '6M'
-                and 'lot_routing' in delivery and 'distri_sort' in delivery):
-            assert isinstance(delivery['lot_routing'], (str, unicode))
-            assert isinstance(delivery['distri_sort'], (str, unicode))
+                and 'lot_routing' in address and 'distri_sort' in address):
+            assert isinstance(address['lot_routing'], (str, unicode))
+            assert isinstance(address['distri_sort'], (str, unicode))
             self._specific_label = '6MA'
             return True
 

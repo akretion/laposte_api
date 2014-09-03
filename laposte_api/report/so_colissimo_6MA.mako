@@ -43,10 +43,10 @@
 /* ||| || |||| */
 /* >5  => is subset C invocation code ; >6  => is subset B invocation code */
 % if len(d['suivi_bar']) > 1 :
-^FO25,140^PR2,2^BCN,230,N,N,N^FD${d['suivi_bar'][:4].replace(' ','') + '>5'}${d['suivi_bar'][4:].replace(' ','')}^FS
+^FO25,140^PR2,2^BCN,230,N,N,N^FD${d['suivi_bar']}^FS
 ^FO25,370^GB402,3,4^FS  /*ligne sous code barre*/
 % endif
-^FO70,380^FDN° de colis : ${d['suivi_bar']}^FS
+^FO70,380^FDN° de colis : ${d['cab_suivi']}^FS
 
 /* /!\ /_\ /!\ /_\ /!\ */
 % if o['nm']:
@@ -76,17 +76,17 @@
 ^FO0,890^XGE:POSTE,1,1^FS
 ^FO720,885^XGE:CAMERA,1,1^FS
 %endif
-% if len(routage_barcode) >1 :
-^FO70,933^A0,60,80^FD${d['lot_routing']}^FS
-% if len(d['lot_routing'])>3:
+% if len(d['routage_barcode']) >1 :
+^FO70,933^A0,60,80^FD${a['lot_routing']}^FS
+% if len(a['lot_routing'])>3:
 ^FO265,948^A0,40,60^FDSA13 REL^FS
-^FO520,940^A0,50,70^FD${d['distri_sort']}^FS
+^FO520,940^A0,50,70^FD${a['distri_sort']}^FS
 %else:
 ^FO220,948^A0,40,60^FDSA13 REL^FS
-^FO480,940^A0,50,70^FD${d['distri_sort']}^FS
+^FO480,940^A0,50,70^FD${a['distri_sort']}^FS
 %endif
-^FO35,978^BCN,170,N,N,N^FD>:%>5${routage_barcode_full[1:9]}>6M>5${routage_barcode_full[10:28]}^FS
-^FO230,1150^FD${routage_barcode.replace('%','')}^FS
+^FO35,978^BCN,170,N,N,N^FD>:%>5${d['routage_barcode_full'][1:9]}>6M>5${d['routage_barcode_full'][10:28]}^FS
+^FO230,1150^FD${d['routage_barcode'].replace('%','')}^FS
 %endif
 ^FO35,978^GB695,1,4^FS
 % else:
