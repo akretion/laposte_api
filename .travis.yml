@@ -1,0 +1,18 @@
+language: python
+python:
+  - "2.7"
+  - "3.3"
+
+virtualenv:
+  system_site_packages: true
+
+install:
+  - pip install coveralls flake8
+  - sudo pip laposte_api
+
+script:
+  - travis_run_flake8
+  - python -m unittest laposte_api.test_coliposte
+
+after_success:
+  coveralls
