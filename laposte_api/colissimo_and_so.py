@@ -295,19 +295,6 @@ class ColiPoste(AbstractLabel):
         except:
             raise "Invalid path %s" % path
 
-    def print_label(self, printer_name, content):
-        #lp -d <zebra_printer> -h 192.168.1.3:631 my_file -o raw
-        try:
-            from cStringIO import StringIO
-        except:
-            from StringIO import StringIO
-        import os
-        file_content = StringIO()
-        file_content.write(content)
-        os.system('lp -d %s -o raw %s'
-                  % (printer_name, file_content.getvalue()))
-        file_content.close()
-
     def _copy2clipboard(self, content):
         """Allow to copy label content to clipboard"""
         import pygtk
