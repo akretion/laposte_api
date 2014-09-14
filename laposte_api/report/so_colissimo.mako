@@ -33,7 +33,7 @@
 ^FB400,6,3,
 ^FDCOMPTE CLIENT: ${s['account']}
 \&SITE DE PRISE EN CHARGE:
-\&${s['support_city']} PFC
+\&${s['support_city']}
 \&N° Colis : ${d['cab_suivi']}
 \&Poids   : ${d['weight']} kg
 \&Edité le : ${d['date']}
@@ -43,9 +43,9 @@
 /* ||| || |||| */
 /* >5  => is subset C invocation code ; >6  => is subset B invocation code */
 % if len(d['suivi_bar']) >1 :
-^FO40,345^PR2,2^BCN,230,N,N,N^FD${d['suivi_bar'][:4].replace(' ','') + '>5'}${d['suivi_bar'][4:].replace(' ','')}^FS
+^FO40,345^PR2,2^BCN,230,N,N,N^FD${d['suivi_bar']}^FS
 ^FO40,575^GB402,3,4^FS
-^FO90,585^FDN° de colis : ${d['suivi_bar']}^FS
+^FO90,585^FDN° de colis : ${d['cab_suivi']}^FS
 
 % if _product_code == '6J':
 ^FO670,370^BY3,,80^BCR,100,N,N,N^FD>:${s['chargeur'][0:1] + '>5'}${s['chargeur'][1:]}^FS
@@ -63,30 +63,30 @@
 % if _product_code in ['6C','6A', '6K']:
 ^FO5,660^GB465,200,4^FS
 ^FO30,675^A0,24,28
-^FD${a['name']}^FS
+^FD${a['final_address']['name']}^FS
 ^FO30,705^FB400,6,2,
-^FD${a['street']}
-\&${a['street2'] or ''}^FS
-^FO30,780^A0,40^FD${a['zip']} ${a['city']}^FS
+^FD${a['final_address']['street']}
+\&${a['final_address']['street2'] or ''}^FS
+^FO30,780^A0,40^FD${a['final_address']['zip']} ${a['final_address']['city']}^FS
 %else:
 ^FO5,660^GB465,200,4^FS
-^FO30,675^A0,24,26^FD${ds['name']}^FS
-%if 'name2' in ds:
+^FO30,675^A0,24,26^FD${a['name']}^FS
+%if 'name2' in a:
 
-^FO30,705^A0,24,26^FD${ds['name2']}^FS
+^FO30,705^A0,24,26^FD${a['name2']}^FS
 ^FO30,735^FB400,6,2,
-^FD${livraison_hors_domicile}${ds['street']}
-\&${ds['street2'] or ''}^FS
-^FO30,810^A0,36,46^FD${ds['zip']}^FS
-^FO160,815^A0,32,26^FD${ds['city']}^FS
+^FD${d['livraison_hors_domicile']}${a['street']}
+\&${a['street2'] or ''}^FS
+^FO30,810^A0,36,46^FD${a['zip']}^FS
+^FO160,815^A0,32,26^FD${a['city']}^FS
 
 %else:
 
 ^FO30,705^FB400,6,2,
-^FD${livraison_hors_domicile}${ds['street']}
-\&${ds['street2'] or ''}^FS
-^FO30,780^A0,36,46^FD${ds['zip']}^FS
-^FO160,785^A0,32,26^FD${ds['city']}^FS
+^FD${d['livraison_hors_domicile']}${a['street']}
+\&${a['street2'] or ''}^FS
+^FO30,780^A0,36,46^FD${a['zip']}^FS
+^FO160,785^A0,32,26^FD${a['city']}^FS
 %endif
 
 %endif
@@ -99,18 +99,18 @@
 /* Field block */
 ^FB400,6,2
 % if _product_code in ['6C','6A', '6K']:
-^FDCode porte : ${a['door_code']}
-\&Code porte2 : ${a['door_code2']}
-\&Interphone : ${a['intercom']}
-\&Téléphone Portable: ${a['mobile']}
-\&Téléphone : ${a['phone']}^FS
+^FDCode porte : ${a['final_address']['door_code']}
+\&Code porte2 : ${a['final_address']['door_code2']}
+\&Interphone : ${a['final_address']['intercom']}
+\&Tél. Portable: ${a['final_address']['mobile']}
+\&Téléphone : ${a['final_address']['phone']}^FS
 % elif _product_code in ['6H', '6M', '6J']:
-^FDAdresse 1: ${a['street']}
-\&Adresse 2: ${a['street2']}
-\&Adresse 3: ${a['street3']}
-\&Adresse 4: ${a['street4']}
-\&${a['zip']} ${a['city']}
-\&Téléphone : ${a['mobile']}^FS
+^FDAdresse 1: ${a['final_address']['street']}
+\&Adresse 2: ${a['final_address']['street2']}
+\&Adresse 3: ${a['final_address']['street3']}
+\&Adresse 4: ${a['final_address']['street4']}
+\&${a['final_address']['zip']} ${a['final_address']['city']}
+\&Téléphone : ${a['final_address']['mobile']}^FS
 % endif
 
 ^FO0,950^A0B^FDSPECIFIQUE^FS
@@ -118,8 +118,8 @@
 /* ||| || |||| */
 /* >5  => is subset C invocation code  */
 % if len(d['pec_bar']) > 1:
-^FO70,880^BCN,230,N,N,N^FD${d['pec_bar'] and d['pec_bar'][:9].replace(' ','') + '>5' + d['pec_bar'][9:].replace(' ','') or ''}^FS
-^FO230,1120^FDN° PCH:  ${d['pec_bar']}^FS
+^FO70,880^BCN,230,N,N,N^FD${d['pec_bar']}^FS
+^FO230,1120^FDN° PCH:  ${d['cab_prise_en_charge']}^FS
 ^FO0,1125^XGE:POSTE,1,1^FS
 ^FO720,1120^XGE:CAMERA,1,1^FS
 % endif
