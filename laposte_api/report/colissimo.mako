@@ -86,7 +86,7 @@ TEL: ${s['phone']}
 ^FD${a['zip']} ${a['city']}^FS
 
 /* COLISS RULE Phone+country expediteur si Internationale */
-^FO30,780^FDTEL: ${a['phone']}^FS
+^FO30,800^FDTEL: ${a['phone']}^FS
 ^FO0,950^A0B^FDSPECIFIQUE^FS
 
 /* ||| || |||| */
@@ -94,4 +94,5 @@ TEL: ${s['phone']}
 ^FO100,1120^FDN° PCH:^FS
 ^FO0,1136^XGE:POSTE,1,1^FS
 ^FO720,1130^XGE:CAMERA,1,1^FS
+
 ^XZ
