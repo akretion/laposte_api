@@ -12,7 +12,12 @@ The available services are:
 
     * Colissimo France
     * Colissimo International with web service.
-- So Colissimo (on roadmap: partially implemented : DO NOT USE for now)
+- So Colissimo (recently developed)
+
+#TODO: not included, Pull Request are welcome
+- Colissimo 8R label (return marchandises)
+- Colissimo Destination: Andorre & Monaco
+- So Colissimo Belguim
 
 
 #Motivation
