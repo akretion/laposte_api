@@ -33,14 +33,6 @@ import countries
 from .label_helper import AbstractLabel
 import os
 
-#import logging
-#debug
-#logging.basicConfig(level=logging.INFO)
-#logging.getLogger('suds.client').setLevel(logging.DEBUG)
-#logging.getLogger('suds.transport').setLevel(logging.DEBUG)
-#logging.getLogger('suds.xsd.schema').setLevel(logging.DEBUG)
-#logging.getLogger('suds.wsdl').setLevel(logging.DEBUG)
-
 
 WEBSERVICE_URL = 'https://ws.colissimo.fr/soap.shippingclpV2/services/WSColiPosteLetterService?wsdl'
 CODING = 'cp1252'
@@ -244,18 +236,6 @@ class ColiPoste(AbstractLabel):
     def extract_mako_error(self, traceback, zpl_file):
         " allow to define where the file mako fail "
         lineno, arg, error = '', '', ''
-        #import pdb;pdb.set_trace()
-        #for (tfilename, tlineno, tfct, ctx) in traceback.traceback:
-        #    if tfct == 'render_body':
-        #        lineno = str(tlineno)
-        #        ctx_error = ctx
-        #    elif tfct == '__str__':
-        #        error = ctx.replace("u'raise", '')
-        #if lineno:
-        #    lineno = ' at line ' + lineno
-        #raise InvalidDataForMako(
-        #    "Mako Template error: '%s'\n%s in '%s':\n\n%s"
-        #    % (error, lineno, zpl_file, ctx_error))
         raise InvalidDataForMako(
             "Mako Template error: \n%s\n\nin %s file"
             % (traceback.message, zpl_file))
@@ -850,7 +830,7 @@ class SoColissimo(ColiPoste):
             + "00"
             + "%d" % infos.get('nm', 0) # non_machinable
             + "0"
-            + infos['carrier_track'][12]
+            + infos['carrier_track'].replace(' ', '')[12]
         )
         barcode += self._build_control_key(barcode[10:])
         return barcode
