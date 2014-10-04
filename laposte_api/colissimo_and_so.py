@@ -830,7 +830,7 @@ class SoColissimo(ColiPoste):
             + "00"
             + "%d" % infos.get('nm', 0) # non_machinable
             + "0"
-            + infos['carrier_track'].replace(' ', '')[12]
+            + infos['carrier_track'].replace(' ', '')[11]
         )
         barcode += self._build_control_key(barcode[10:])
         return barcode
