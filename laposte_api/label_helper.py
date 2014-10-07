@@ -86,8 +86,9 @@ class AbstractLabel(object):
                                 "%s :  %s given" % (field, val, size))
                     elif key == 'in' and data not in val:
                         raise InvalidValueNotInList(
-                            "'%s' value must belong to this list %s"
-                            % (data, val))
+                            "field '%s' with value '%s' must belong "
+                            "to this list %s"
+                            % (field, data, val))
                     elif key == 'date':
                         self.check_type(field, [str, datetime], data)
                         if isinstance(data, datetime):
