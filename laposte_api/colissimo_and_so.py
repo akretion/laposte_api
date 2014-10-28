@@ -83,9 +83,9 @@ DELIVERY_MODEL = {
     "date":          {'required': True, 'date': '%d/%m/%Y'},
     "Instructions":  {'max_size': 70},
 }
-OPTION_MODEL = {
-    "insurance":     {'in': FOREIGN_INSURANCE_MAPPING.keys()},
-}
+
+OPTION_MODEL = {}
+
 SENDER_MODEL = {
     "name":         {'required': True},
     "street":       {'required': True},
@@ -520,15 +520,20 @@ class WSInternational(ColiPoste):
         return service
 
     def _set_parcel(self, client, delivery, option):
-        self.check_model(delivery, DELIVERY_MODEL, 'delivery')
         parc = client.factory.create('ParcelVO')
+        self.check_model(delivery, DELIVERY_MODEL, 'delivery')
+        option_model = OPTION_MODEL.copy()
+        if 'insurance' in option:
+            option_model['insurance'] = {'in': FOREIGN_INSURANCE_MAPPING.keys()}
+        self.check_model(option, option_model, 'option')
         parc.typeGamme = self._product_code
         #TODO manage 'return type'
         parc.returnTypeChoice = 3
         #TODO manage insurance range
         parc.insuranceRange = '00'
         parc.insuranceAmount = 0
-        parc.insuranceValue = FOREIGN_INSURANCE_MAPPING[option['insurance']]
+        insurance_idx = option.get('insurance', '0')
+        parc.insuranceValue = FOREIGN_INSURANCE_MAPPING.get(insurance_idx, '0')
         #TODO manage weight with Access Internat.
         parc.weight = delivery['weight']
         parc.horsGabarit = str(int(option['nm']))
