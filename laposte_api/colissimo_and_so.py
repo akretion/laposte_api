@@ -55,6 +55,12 @@ PRODUCT_LOGO = {
     '8R': 'SERVI_F', # NOT implemented
 }
 
+FOREIGN_INSURANCE_MAPPING = {
+    '01': '15000', '02': '30000', '03': '45000',
+    '04': '60000', '05': '75000', '06': '90000', '07': '105000',
+    '08': '120000', '09': '135000', '10': '150000'}
+
+
 # Here is all keys used in coliposte templates
 ADDRESS_MODEL = {
     "name":       {'required': True, 'max_size': 35},
@@ -76,6 +82,9 @@ DELIVERY_MODEL = {
     "weight":        {'required': True},
     "date":          {'required': True, 'date': '%d/%m/%Y'},
     "Instructions":  {'max_size': 70},
+}
+OPTION_MODEL = {
+    "insurance":     {'in': FOREIGN_INSURANCE_MAPPING.keys()},
 }
 SENDER_MODEL = {
     "name":         {'required': True},
@@ -465,8 +474,8 @@ class WSInternational(ColiPoste):
 
     def nicely_dict(self, a_dict):
         return str(a_dict).replace("{'", "'") \
-                            .replace(", '", "\n'") \
-                            .replace("'}", "'")
+                          .replace(", '", "\n'") \
+                          .replace("'}", "'")
 
     def encode_file_data(self, data):
         try:
@@ -476,6 +485,13 @@ class WSInternational(ColiPoste):
         return data.replace('^XA', '^XA\n^CI28\n^LH20,0')
 
     def extract_responses_messages(self, result):
+        """
+            Possible messages
+            30008: 'Service non autorise pour cet identifiant.
+                   Veuillez prendre contact avec votre interlocuteur
+                   commercial afin de reinitialiser votre compte client'
+            30000: 'Identifiant ou mot de passe incorrect'
+        """
         response = []
         for mess in result.message:
             infos = mess
@@ -504,7 +520,6 @@ class WSInternational(ColiPoste):
         return service
 
     def _set_parcel(self, client, delivery, option):
-        ""
         self.check_model(delivery, DELIVERY_MODEL, 'delivery')
         parc = client.factory.create('ParcelVO')
         parc.typeGamme = self._product_code
@@ -513,7 +528,7 @@ class WSInternational(ColiPoste):
         #TODO manage insurance range
         parc.insuranceRange = '00'
         parc.insuranceAmount = 0
-        parc.insuranceValue = 0
+        parc.insuranceValue = FOREIGN_INSURANCE_MAPPING[option['insurance']]
         #TODO manage weight with Access Internat.
         parc.weight = delivery['weight']
         parc.horsGabarit = str(int(option['nm']))

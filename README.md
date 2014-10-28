@@ -17,7 +17,7 @@ The available services are:
 #TODO: not included, Pull Request are welcome
 - Colissimo 8R label (return marchandises)
 - Colissimo Destination: Andorre & Monaco
-- So Colissimo Belguim
+- So Colissimo Belgium
 
 
 #Motivation
