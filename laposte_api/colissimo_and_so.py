@@ -16,6 +16,7 @@ import base64
 #'https://fedorahosted.org/suds/wiki/Documentation'
 from suds.client import Client, WebFault
 import re
+import os
 from .exception_helper import (
     InvalidSequence,
     InvalidWeight,
@@ -24,14 +25,12 @@ from .exception_helper import (
     InvalidMissingField,
     InvalidZipCode,
     InvalidCountry,
-    InvalidDate,
     InvalidCode,
     InvalidValue,
     InvalidValueNotInList,
 )
-import countries
+from . import countries
 from .label_helper import AbstractLabel
-import os
 
 
 WEBSERVICE_URL = 'https://ws.colissimo.fr/soap.shippingclpV2/services/WSColiPosteLetterService?wsdl'
@@ -52,7 +51,7 @@ PRODUCT_LOGO = {
     '9V': 'EXPERT_F',
     '7Q': 'EXPER_OM',
     '8Q': 'ACCES_OM',
-    '8R': 'SERVI_F', # NOT implemented
+    '8R': 'SERVI_F',  # NOT implemented for now
 }
 
 FOREIGN_INSURANCE_MAPPING = {
@@ -63,19 +62,19 @@ FOREIGN_INSURANCE_MAPPING = {
 
 # Here is all keys used in coliposte templates
 ADDRESS_MODEL = {
-    "name":       {'required': True, 'max_size': 35},
-    "street":     {'required': True, 'max_size': 35},
-    "street2":    {'max_size': 35},
-    "street3":    {'max_size': 35},
-    "zip":        {'required': True, 'max_size': 10},
-    "city":       {'required': True, 'max_size': 35},
-    "phone":      {'max_size': 20},
-    "mobile":     {'max_size': 20},
-    "email":      {'max_size': 100},
-    'name2':      {'max_size': 30},  # so colissimo
-    'door_code2': {'max_size': 20},  # so colissimo
-    'door_code':  {'max_size': 20},  # so colissimo
-    'intercom':   {'max_size': 20},  # so colissimo
+    "name":        {'required': True, 'max_size': 35},
+    "street":      {'required': True, 'max_size': 38},
+    "street2":     {'max_size': 38},
+    "street3":     {'max_size': 38},
+    "zip":         {'required': True, 'max_size': 10},
+    "city":        {'required': True, 'max_size': 35},
+    "phone":       {'max_size': 20},
+    "mobile":      {'max_size': 20},
+    "email":       {'max_size': 100},
+    'name2':       {'max_size': 30},  # so colissimo
+    'door_code2':  {'max_size': 20},  # so colissimo
+    'door_code':   {'max_size': 20},  # so colissimo
+    'intercom':    {'max_size': 20},  # so colissimo
 }
 
 DELIVERY_MODEL = {
@@ -219,7 +218,7 @@ class ColiPoste(AbstractLabel):
         zpl_file = self._service
         if self._specific_label:
             # in this case, you must use a really specific label
-            # for 'commerçant' for example
+            # (some 'commerçant' use case)
             zpl_file += '_' + self._specific_label
         zpl_file += '.mako'
         zpl_file_path = os.path.join(
@@ -642,6 +641,7 @@ class Colissimo(ColiPoste):
         return kwargs
 
     def get_cab_prise_en_charge(self, infos):
+        # TODO: refactor this method with SoColissimo
         # ordre de tri
         order = '1'
         zip_country = self._get_zip_country(
@@ -658,18 +658,17 @@ class Colissimo(ColiPoste):
                         "Please check your product in parcel")
             else:
                 raise InvalidWeight("Weight is required and is not specified")
-            weight = str(int(round(infos['weight'] * 100))).zfill(4)
+            weight = "%04d" % (infos['weight'] * 100)
         # Tranche assurance Ad Valorem ou niveau de recommandation
-            # TODO implement niveau de recommandation
         valor = '00'
         if 'insurance' in infos:
+            # TODO implement niveau de recommandation
             valor = infos['insurance']
-        # 'non mécanisable' colissimo
-        nm = '0'
-        if infos.get('nm'):
-            nm = '1'
-        # FTD/AR management done
-            # TODO CRBT management
+        ## 'non mécanisable' colissimo
+        #nm = '0'
+        #if infos.get('nm'):
+        #    nm = '1'
+        # TODO CRBT management
         crbt = '0'
         ftd = '0'
         ar = '0'
@@ -704,8 +703,7 @@ class Colissimo(ColiPoste):
             + weight
             + ' '
             + valor
-            + nm
-            + ''
+            + "%d" % infos.get('nm', 0)  # non_machinable
             + code_crbt_ftd_ar
             + ctrl_link
         )
@@ -761,8 +759,6 @@ class SoColissimo(ColiPoste):
         delivery['livraison_hors_domicile'] = ''
         if self._product_code in ['6M', '6J', '6H']:
             delivery['livraison_hors_domicile'] = address['final_address']['name'] + '\n\&'
-        # choice between standard and specific label
-        self._choose_label(address)
         if self._specific_label == '6MA':
             delivery['routage_barcode'] = self.routage_barcode(
                 delivery, address)
@@ -794,14 +790,6 @@ class SoColissimo(ColiPoste):
         address['final_address'] = final_address
         return True
 
-    def _choose_label(self, address):
-        if (self._product_code == '6M'
-                and 'lot_routing' in address and 'distri_sort' in address):
-            assert isinstance(address['lot_routing'], (str, unicode))
-            assert isinstance(address['distri_sort'], (str, unicode))
-            self._specific_label = '6MA'
-            return True
-
     def _complete_kwargs(self, kwargs):
         # logo avec signature
         kwargs['signature'] = 'SIGNA'
@@ -832,13 +820,15 @@ class SoColissimo(ColiPoste):
         return option
 
     def get_cab_prise_en_charge(self, infos):
-        if self._specific_label == '6MA':
+        # TODO: refactor this method with Colissimo
+        if '_specific_label' in infos:
+            self._specific_label = '6MA'
             zip_code = '91500'
-        elif self._product_code in ['6J', '6H', '6M']:
-            zip_code = infos['zip']
         else:
-            #TODO FIXME wrong for dropoffsite
             zip_code = infos['zip']
+        valor = '00'
+        if 'insurance' in infos:
+            valor = infos['insurance']
         barcode = (
             self._product_code
             + '1 '
@@ -846,9 +836,8 @@ class SoColissimo(ColiPoste):
             + ' '
             + self._account
             + " %04d " % (infos['weight'] * 100)
-            #TODO support insurance
-            + "00"
-            + "%d" % infos.get('nm', 0) # non_machinable
+            + valor
+            + "%d" % infos.get('nm', 0)  # non_machinable
             + "0"
             + infos['carrier_track'].replace(' ', '')[11]
         )

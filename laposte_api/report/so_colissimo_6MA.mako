@@ -1,6 +1,6 @@
 ## -*- coding: utf-8 -*-
 /* Utf8 file encoded converted in CP1252 by python */
-/* PARAMETERS VARIABLES : Search VARY in comments */
+/* 6MA */
 ^XA
 ^LH30,30        /* initial position*/
 ^CI27           /* windows CP1252 decoding */

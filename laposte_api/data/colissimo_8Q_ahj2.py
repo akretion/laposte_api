@@ -13,7 +13,6 @@ option = {'ar': False, 'nm': True, 'ftd': False}
 kwargs = {'logo': 'ACCES_OM', '_product_code': u'8Q'}
 
 content = """/* Utf8 file encoded converted in CP1252 by python */
-/* PARAMETERS VARIABLES : Search VARY in comments */
 ^XA
 ^LH30,30          /* initial position*/
 ^CI27       /* windows CP1252 decoding */
@@ -61,9 +60,7 @@ TEL: 04 99 99 99 99
 /* ||| || |||| */
 /* >5  => is subset C invocation code ; >6  => is subset B invocation code */
 ^FO40,345^PR2,2^BCN,230,Y,N,N^FD8Q0>50000000017^FS
-^FO40,575^GB
-402
-,3,4^FS
+^FO40,575^GB402,3,4^FS
 
 ^FO0,585^FDN° de colis :^FS
 
@@ -71,8 +68,7 @@ TEL: 04 99 99 99 99
 /* /!\ /_\ /!\ /_\ /!\ */
 ^FO570,350^XGE:NM,1,1^FS
 
-^FO30,630^A0,30^FDDESTINATAIRE
-^FS
+^FO30,630^A0,30^FDDESTINATAIRE^FS
 
 ^FO5,660^GB450,200,4^FS
 ^FO30,675^A0,24,28^FDKarl AHJUMIDE^FS
@@ -85,6 +81,7 @@ TEL: 04 99 99 99 99
 ^FD97120 Saint Claude^FS
 
 /* COLISS RULE Phone+country expediteur si Internationale */
+^FO30,800^FDTEL: ^FS
 ^FO0,950^A0B^FDSPECIFIQUE^FS
 
 /* ||| || |||| */

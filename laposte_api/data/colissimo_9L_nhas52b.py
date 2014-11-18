@@ -11,7 +11,6 @@ option={'ar': False, 'nm': False, 'ftd': False}
 kwargs={'logo': 'ACCESS_F', '_product_code': u'9L'}
 
 content="""/* Utf8 file encoded converted in CP1252 by python */
-/* PARAMETERS VARIABLES : Search VARY in comments */
 ^XA
 ^LH30,30          /* initial position*/
 ^CI27       /* windows CP1252 decoding */
@@ -57,17 +56,14 @@ content="""/* Utf8 file encoded converted in CP1252 by python */
 /* ||| || |||| */
 /* >5  => is subset C invocation code ; >6  => is subset B invocation code */
 ^FO40,345^PR2,2^BCN,230,Y,N,N^FD9L0>50000000024^FS
-^FO40,575^GB
-402
-,3,4^FS
+^FO40,575^GB402,3,4^FS
 
 ^FO0,585^FDN° de colis :^FS
 
 
 /* /!\ /_\ /!\ /_\ /!\ */
 
-^FO30,630^A0,30^FDDESTINATAIRE
-^FS
+^FO30,630^A0,30^FDDESTINATAIRE^FS
 
 ^FO5,660^GB450,200,4^FS
 ^FO30,675^A0,24,28^FDJim NHASTIC^FS
@@ -80,6 +76,7 @@ content="""/* Utf8 file encoded converted in CP1252 by python */
 ^FD69001 Lyon^FS
 
 /* COLISS RULE Phone+country expediteur si Internationale */
+^FO30,800^FDTEL: ^FS
 ^FO0,950^A0B^FDSPECIFIQUE^FS
 
 /* ||| || |||| */

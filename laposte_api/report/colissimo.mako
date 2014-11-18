@@ -1,6 +1,5 @@
 ## -*- coding: utf-8 -*-
 /* Utf8 file encoded converted in CP1252 by python */
-/* PARAMETERS VARIABLES : Search VARY in comments */
 ^XA
 ^LH30,30          /* initial position*/
 ^CI27       /* windows CP1252 decoding */
@@ -50,6 +49,7 @@ TEL: ${s['phone']}
 \&Edité le : ${d['date']}
 ^FS
 
+
 /* ||| || |||| */
 /* >5  => is subset C invocation code ; >6  => is subset B invocation code */
 ^FO40,345^PR2,2^BCN,230,Y,N,N^FD${d['suivi_bar']}^FS
@@ -94,5 +94,4 @@ TEL: ${s['phone']}
 ^FO100,1120^FDN° PCH:^FS
 ^FO0,1136^XGE:POSTE,1,1^FS
 ^FO720,1130^XGE:CAMERA,1,1^FS
-
 ^XZ

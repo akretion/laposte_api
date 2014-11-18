@@ -3,8 +3,10 @@
 
 import unittest2
 import inspect
-from .colissimo_and_so import ColiPoste
-from .data import (
+import difflib
+import os
+from laposte_api.colissimo_and_so import ColiPoste
+from laposte_api.data import (
     colissimo_9L_nhas52b,
     colissimo_9L_hamp13b,
     colissimo_9L_hamp23b,
@@ -30,17 +32,31 @@ class ColissimoTest(unittest2.TestCase):
     def setUp(self):
         pass
 
-    def run_test(self, script):
+    def run_test(self, script_name):
+        script = eval(script_name)
         service = ColiPoste(script.sender['account']).get_service(
             'colissimo', script.kwargs['_product_code'])
         label = service.get_label(
             script.sender, script.delivery, script.address, script.option)
+        diff = difflib.unified_diff(label, script.content)
+        files = [
+            {'path': "/tmp/script-%s.txt" % script_name, 'type': 'script'},
+            {'path': "/tmp/label-%s.txt" % script_name, 'type': 'label'}]
+        for elm in files:
+            with open(elm['path'], 'w') as f:
+                if elm['type'] == 'script':
+                    f.write(script.content)
+                else:
+                    f.write(label)
+        if label != script.content:
+            print '\n', script_name, '\n', ''.join(diff)
+            meld_cmd = 'meld %s %s' % (files[0]['path'], files[1]['path'])
+            os.system(meld_cmd)
         self.assertEqual(label, script.content)
 
     def call_test(self, test_name_fonction):
-        my_script = 'colissimo_' + test_name_fonction[11:]
-        #name = 'data'
-        self.run_test(eval(my_script))
+        script_name = 'colissimo_' + test_name_fonction[11:]
+        self.run_test(script_name)
 
     def test_label_9L_nhas52b(self):
         self.call_test(current_function())
