@@ -20,6 +20,10 @@ from laposte_api.data import (
     colissimo_7Q_camet14,
     colissimo_8Q_ahj2,
     colissimo_8Q_stou2,
+    so_colissimo_6MB_joy,
+    so_colissimo_6MB_jecon,
+    so_colissimo_6MB_joly,
+    so_colissimo_6MB_boite,
 )
 
 
