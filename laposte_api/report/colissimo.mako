@@ -23,15 +23,22 @@
 ^FO0,160^GD350,160,10,,L^FS
 ^FO410,160^GB360,160,4^FS
 /*^A0 /*A:font|font_type,orientation,size*/*/
-^FO25,175^A0,30,30^FD${s['name']}^FS
-^FO25,205   /*FO:field origin|x,y*/
+^FO20,170
+% if len(s['name']) > 25:
+^A0,24,24
+% else:
+^A0,28,28
+% endif
+^FD${s['name']}^FS
+^A0,24
+^FO20,200   /*FO:field origin|x,y*/
 ^FB400,5,3,  /*FB:field block|width text,line number,space beetween lines*/
 /* COLISS RULE Teleph expediteur si OM ou I */
 /* COLISS RULE Pays expediteur si OM ou I */
-^A0,24^FD${s['street']}
-\&
+^A0,20^FD${s['street']}
+\&${s['street2']}
 % if _product_code in ['8Q', '7Q']:
-TEL: ${s['phone']}
+\&TEL: ${s['phone']}
 % endif
 \&${s['zip']} ${s['city']}
 % if _product_code in ['8Q', '7Q']:

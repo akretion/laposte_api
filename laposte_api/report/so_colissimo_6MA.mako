@@ -22,7 +22,7 @@
 ^FO460,145^GD300,160,10,,R^FS
 ^FO460,145^GD300,160,10,,L^FS
 /*^A0 /*A:font|font_type,orientation,size*/*/
-^FO480,175^A0,30,30^FD${s['name']}^FS
+^FO480,175^A0,24,24^FD${s['name']}^FS
 ^FO480,205   /*FO:field origin|x,y*/
 ^FB400,5,3,  /*FB:field block|width text,line number,space beetween lines*/
 ^A0,24^FD${s['street']}
