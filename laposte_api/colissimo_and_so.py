@@ -88,7 +88,7 @@ OPTION_MODEL = {}
 SENDER_MODEL = {
     "name":         {'required': True},
     "street":       {'required': True},
-    "street2":      {'max_size': 20},
+    "street2":      {'max_size': 30},
     "zip":          {'required': True},
     "city":         {'required': True},
     "support_city": {'required': True},
