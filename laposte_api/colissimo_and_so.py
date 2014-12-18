@@ -15,6 +15,7 @@ from datetime import datetime
 import base64
 #'https://fedorahosted.org/suds/wiki/Documentation'
 from suds.client import Client, WebFault
+from suds.transport.http import HttpTransport as SudsHttpTransport
 import re
 import os
 from .exception_helper import (
@@ -401,6 +402,13 @@ class ColiPoste(AbstractLabel):
         return result
 
 
+class WellBehavedHttpTransport(SudsHttpTransport):
+    """HttpTransport which properly uses the *_proxy environment variables."""
+
+    def u2handlers(self):
+        return []
+
+
 class WSInternational(ColiPoste):
 
     def get_label(self, sender, delivery, address, option, return_request=False):
@@ -411,7 +419,7 @@ class WSInternational(ColiPoste):
         }
         SENDER_MODEL.update(infos)
         option.update(self._populate_option_with_default_value(option))
-        client = Client(WEBSERVICE_URL)
+        client = Client(WEBSERVICE_URL, transport=WellBehavedHttpTransport())
         ADDRESS_MODEL.update({'countryCode': {'required': True}})
         letter = client.factory.create('Letter')
         letter.contractNumber = self._account
