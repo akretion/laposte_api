@@ -65,13 +65,15 @@ class AbstractLabel(object):
                         if size > val:
                             raise InvalidSize(
                                 "Max size for field '%s' is "
-                                "%s :  %s given" % (field, val, size))
+                                "%s :  %s given\nCurrent field value : %s"
+                                % (field, val, size, data))
                     elif key == 'min_size':
                         self.check_type(field, [str, unicode], data)
                         if size < val:
                             raise InvalidSize(
                                 "Min size for field '%s' is "
-                                "%s :  %s given" % (field, val, size))
+                                "%s :  %s given\nCurrent field value : %s"
+                                % (field, val, size, data))
                     elif key == 'min_number':
                         self.check_type(field, [int, float], data)
                         if size < val:
