@@ -88,12 +88,12 @@
 ^FD${a['street']}
 \&${a['street2']}
 \&${a['street3']}^FS
-^FO30,755
+^FO30,780
 ^A0,40
 ^FD${a['zip']} ${a['city']}^FS
 
 /* COLISS RULE Phone+country expediteur si Internationale */
-^FO30,800^FDTEL: ${a['phone']}^FS
+^FO30,825^FDTEL: ${a['phone']}^FS
 ^FO0,950^A0B^FDSPECIFIQUE^FS
 
 /* ||| || |||| */
