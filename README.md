@@ -68,7 +68,7 @@ The easiest way to install laposte_api:
     try:
         service = ColiPoste(account).get_service(product, label_code)
     except (InvalidSize, InvalidCode, InvalidType, Exception) as e:
-        raise e
+        raise
 
     tracking_ref = service.get_cab_suivi(get_sequence(label_code))
     
@@ -96,7 +96,7 @@ The easiest way to install laposte_api:
     try:
         prise_en_charge_barcode = service.get_cab_prise_en_charge(infos)
     except (InvalidWeight, Exception) as e:
-        raise e
+        raise
 
     delivery = {
         'weight': parcel_weight, 'date': '22/06/2014',
@@ -116,7 +116,7 @@ The easiest way to install laposte_api:
             InvalidKeyInTemplate,
             InvalidKeyInTemplate,
             InvalidMissingField) as e:
-        raise e
+        raise
 
     print "VOICI L'ETIQUETTE ZPL POUR COLISSIMO France:\n"
     print "=========================================\n\n\n", label_file
