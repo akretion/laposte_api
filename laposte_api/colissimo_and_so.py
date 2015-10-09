@@ -150,20 +150,21 @@ class ColiPoste(AbstractLabel):
                     del DELIVERY_MODEL['cab_suivi']
             else:
                 service = Colissimo(self._account)
-                self._complete_models()
+                #self._complete_models()
         elif service_name == 'so_colissimo':
             if code == 'SO':
                 service = WSInternational(self._account)
                 service_name = 'ColiPosteInternational'
             else:
                 service = SoColissimo(self._account)
-                self._complete_models()
+                #self._complete_models()
         service._service, service._product_code = self._check_service(
             service_name, code)
         return service
 
-    def _complete_models(self):
-        DELIVERY_MODEL.update({"cab_suivi": {'required': True}})
+#TODO reimplement it
+#    def _complete_models(self):
+#        DELIVERY_MODEL.update({"cab_suivi": {'required': True}})
 
     def _check_account(self, account):
         if not account or len(account) != 6:
@@ -412,15 +413,17 @@ class WellBehavedHttpTransport(SudsHttpTransport):
 class WSInternational(ColiPoste):
 
     def get_label(self, sender, delivery, address, option, return_request=False):
+        sender_model = SENDER_MODEL.copy()
         infos = {
             'password': {'required': True},
             'phone': {'required': True},
             'country': {'required': True},
         }
-        SENDER_MODEL.update(infos)
+        sender_model.update(infos)
         option.update(self._populate_option_with_default_value(option))
         client = Client(WEBSERVICE_URL, transport=WellBehavedHttpTransport())
-        ADDRESS_MODEL.update({'countryCode': {'required': True}})
+        address_model = ADDRESS_MODEL.copy()
+        address_model.update({'countryCode': {'required': True}})
         letter = client.factory.create('Letter')
         letter.contractNumber = self._account
         letter.password = sender['password']
@@ -428,10 +431,10 @@ class WSInternational(ColiPoste):
         letter.service = self._set_service(client)
         letter.parcel = self._set_parcel(client, delivery, option)
         dest = client.factory.create('DestEnvVO')
-        dest.addressVO = self._set_address_dest(client, address)
+        dest.addressVO = self._set_address_dest(client, address, address_model)
         letter.dest = dest
         exp = client.factory.create('ExpEnvVO')
-        exp.addressVO = self._set_address_exp(client, sender)
+        exp.addressVO = self._set_address_exp(client, sender, sender_model)
         if 'ref_client' in delivery:
             exp.ref = delivery['ref_client']
         letter.exp = exp
@@ -574,15 +577,15 @@ class WSInternational(ColiPoste):
         parc.contents = contents
         return parc
 
-    def _set_address_dest(self, client, address):
-        self.check_model(address, ADDRESS_MODEL, 'address')
+    def _set_address_dest(self, client, address, address_model):
+        self.check_model(address, address_model, 'address')
         addr_dest = client.factory.create('AddressVO')
         self._address_vo(addr_dest, address)
         self._check_country_code(address['countryCode'])
         return addr_dest
 
-    def _set_address_exp(self, client, sender):
-        self.check_model(sender, SENDER_MODEL, 'sender')
+    def _set_address_exp(self, client, sender, sender_model):
+        self.check_model(sender, sender_model, 'sender')
         addr_exp = client.factory.create('AddressVO')
         if 'countryCode' not in sender or not sender['countryCode']:
             sender.update({'countryCode': 'FR'})
@@ -633,14 +636,15 @@ class WSInternational(ColiPoste):
 class Colissimo(ColiPoste):
 
     def complete_and_check_datas(self, sender, delivery, address, option):
+        sender_model = SENDER_MODEL.copy()
         if self._product_code in ['7Q', '8Q']:
             infos = {
                 'phone': {'required': True},
                 'country': {'required': True},
             }
-            SENDER_MODEL.update(infos)
+            sender_model.update(infos)
         option.update(self._populate_option_with_default_value(option))
-        self.check_model(sender, SENDER_MODEL, 'sender')
+        self.check_model(sender, sender_model, 'sender')
         self.check_model(delivery, DELIVERY_MODEL, 'delivery')
         self.check_model(address, ADDRESS_MODEL, 'address')
         return True
@@ -741,6 +745,8 @@ class Colissimo(ColiPoste):
 class SoColissimo(ColiPoste):
 
     def complete_and_check_datas(self, sender, delivery, address, option):
+        sender_model = SENDER_MODEL.copy()
+        address_model = ADDRESS_MODEL.copy()
         infos = {
             # TODO: is required ?
             'phone': {'required': True},
@@ -748,21 +754,21 @@ class SoColissimo(ColiPoste):
         }
         if self._product_code in ['6J']:
             infos['chargeur'] = {'required': True, 'min_size': 9, 'max_size': 9}
-        SENDER_MODEL.update(infos)
-        ADDRESS_MODEL.update({
+        sender_model.update(infos)
+        address_model.update({
             # TODO check with SO Belgium
             "zip": {'required': True},
             })
         # TODO also validate the final partner zip
         self._get_zip_country(address['zip'])
-        DELIVERY_MODEL.update({
+        #DELIVERY_MODEL.update({
             #"weight": {'required': True, 'max_number': 30},
             #"sequence": {'required': True, 'max_size': 10, 'min_size': 10},
-            })
+        #    })
         option.update(self._populate_option_with_default_value(option))
-        self.check_model(sender, SENDER_MODEL, 'sender')
+        self.check_model(sender, sender_model, 'sender')
         self.check_model(delivery, DELIVERY_MODEL, 'delivery')
-        self.check_model(address, ADDRESS_MODEL, 'address')
+        self.check_model(address, address_model, 'address')
         self._set_final_address(address)
         delivery['livraison_hors_domicile'] = ''
         if self._product_code in ['6M', '6J', '6H']:
