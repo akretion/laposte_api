@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
 #
-#  licence AGPL version 3 or later
+#  license AGPL version 3 or later
 #  see http://www.gnu.org/licenses/agpl-3.0.txt
 #  Copyright (C) 2014 Akretion (http://www.akretion.com).
 #  @author David BEAL <david.beal@akretion.com>
@@ -67,7 +67,7 @@ ADDRESS_MODEL = {
     "street":      {'required': True, 'max_size': 38},
     "street2":     {'max_size': 38},
     "street3":     {'max_size': 38},
-    "zip":         {'required': True, 'max_size': 10},
+    "zip":         {'max_size': 10},
     "city":        {'required': True, 'max_size': 35},
     "phone":       {'max_size': 20},
     "mobile":      {'max_size': 20},
@@ -578,6 +578,10 @@ class WSInternational(ColiPoste):
         return parc
 
     def _set_address_dest(self, client, address, address_model):
+        if countries.postal_code.get(address.get('countryCode')):
+            postal_code = countries.postal_code.get(address['countryCode'])
+            if postal_code.get('control') != u'non':
+                address_model['zip']['required'] = True
         self.check_model(address, address_model, 'address')
         addr_dest = client.factory.create('AddressVO')
         self._address_vo(addr_dest, address)
@@ -637,6 +641,8 @@ class Colissimo(ColiPoste):
 
     def complete_and_check_datas(self, sender, delivery, address, option):
         sender_model = SENDER_MODEL.copy()
+        address_model = ADDRESS_MODEL.copy()
+        address_model['zip']['required'] = True
         if self._product_code in ['7Q', '8Q']:
             infos = {
                 'phone': {'required': True},
@@ -747,6 +753,7 @@ class SoColissimo(ColiPoste):
     def complete_and_check_datas(self, sender, delivery, address, option):
         sender_model = SENDER_MODEL.copy()
         address_model = ADDRESS_MODEL.copy()
+        address_model['zip']['required'] = True
         infos = {
             # TODO: is required ?
             'phone': {'required': True},
