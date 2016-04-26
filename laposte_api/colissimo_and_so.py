@@ -501,16 +501,20 @@ class WSInternational(ColiPoste):
                    Veuillez prendre contact avec votre interlocuteur
                    commercial afin de reinitialiser votre compte client'
             30000: 'Identifiant ou mot de passe incorrect'
+            30600: 'Caractère invalide'
         """
         response = []
         for mess in result.message:
             infos = mess
             if not isinstance(mess, dict):
+                try:
+                    description = mess.libelle.encode('iso-8859-15')
+                except:
+                    description = mess.libelle.encode('utf8')
                 infos = {
                     'type': str(mess.type).encode('utf8'),
                     'id': str(mess.id).encode('utf8'),
-                    'libelle': mess.libelle.encode('iso-8859-15')}
-                    #'libelle': mess.libelle.encode('utf8')}
+                    'libelle': description}
             response.append(infos)
         return response
 
