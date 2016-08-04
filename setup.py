@@ -19,7 +19,7 @@ setup(
 	include_package_data = True,
 
 	# Package dependencies.
-	install_requires = ['mako', 'suds'],
+	install_requires = ['mako', 'suds-jurko'],
 
 	# Metadata for PyPI.
 	author = 'David Béal',
