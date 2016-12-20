@@ -1,18 +1,24 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-##############################################################################
-#
 #  license AGPL version 3 or later
 #  see http://www.gnu.org/licenses/agpl-3.0.txt
-#  Copyright (C) 2014 Akretion (http://www.akretion.com).
+#  Copyright (C) 2014-16 Akretion (http://www.akretion.com).
 #  @author David BEAL <david.beal@akretion.com>
-#
-##############################################################################
 
 from mako.template import Template
 from mako.exceptions import RichTraceback
 from datetime import datetime
 import base64
+import logging
+from collections import defaultdict
+_logger = logging.getLogger(__name__)
+
+try:
+    from roulier import roulier  # lib for carrier (laposte replacement)
+    from roulier.carriers.laposte.laposte_api import (
+        LaposteApi as Roulier_LaposteApi)
+except ImportError:
+    _logger.warning('Cannot `import roulier`.')
 #'https://fedorahosted.org/suds/wiki/Documentation'
 from suds.client import Client, WebFault
 from suds.transport.http import HttpTransport as SudsHttpTransport
@@ -133,7 +139,7 @@ class ColiPoste(AbstractLabel):
     _label_code = {
         'colissimo': ['9V', '9L', '7Q', '8Q'],
         'so_colissimo': ['6C', '6A', '6K', '6H', '6J', '6M'],
-        'ColiPosteInternational': ['EI', 'AI'],
+        'ColiPosteInternational': ['EI', 'AI', 'COLI'],
     }
 
     def __init__(self, account):
@@ -148,6 +154,9 @@ class ColiPoste(AbstractLabel):
                 if 'cab_suivi' in DELIVERY_MODEL:
                     # drop this key in case of existence in the previous call
                     del DELIVERY_MODEL['cab_suivi']
+            elif code in ['COLI']:
+                service = WSInternationalNew(self._account)
+                service_name = 'ColiPosteInternational'
             else:
                 service = Colissimo(self._account)
                 #self._complete_models()
@@ -410,9 +419,82 @@ class WellBehavedHttpTransport(SudsHttpTransport):
         return []
 
 
+class InvalidDataForLaposteInter(Exception):
+    ""
+
+
+class WSInternationalNew(ColiPoste):
+
+    def map(self, dico, domain, required_key, provided_key=None):
+        if not provided_key:
+            provided_key = required_key
+        sch = self.laposte_schema
+        if domain not in sch:
+            raise InvalidDataForLaposteInter(
+                u"Le domain fourni '%s' n'est pas présent dans les clés "
+                u"du schéma \n%s" % (domain, sch.keys()))
+        params = sch[domain]['schema'].get(required_key)
+        if params:
+            if params.get('required') and not dico.get(provided_key):
+                raise InvalidDataForLaposteInter(
+                    u"La clé '%s' est requise dans le domaine '%s'\n"
+                    u"mais n'est pas fourni.\n"
+                    u"Autres paramètres\n%s" % (required_key, domain, params))
+        if dico.get(provided_key):
+            self.payload[domain][required_key] = dico.get(provided_key)
+
+    def get_label(self, sender, delivery, address, option,
+                  return_request=False):
+        """
+            delivery = {
+                'date': '21/11/2016', 'ref_client': u'C0024', 'weight': 13.7}
+        """
+        self.laposte_schema = Roulier_LaposteApi().api_schema()
+        roul_laposte = roulier.get('laposte')
+        self.payload = roul_laposte.api()
+        self.payload['auth'].update({"login": self._account})
+        self.map(sender, 'auth', 'password')
+        self.payload['service'].update({"product": self._product_code})
+        self.payload['service'].update({"transportationAmount": 5})
+        self.payload['service'].update({"returnTypeChoice": 3})
+        provided_dict = delivery
+        domain = 'service'
+        self.map(provided_dict, domain, 'totalAmount')
+        self.map(provided_dict, domain, 'shippingDate', 'date')
+        self.map(provided_dict, domain, 'senderParcelRef', 'ref_client')
+        domain = 'customs'
+        self.map(delivery['customs'], domain, 'category')
+        self.map(delivery['customs'], domain, 'articles')
+        provided_dict = address
+        domain = 'to_address'
+        self.map(provided_dict, domain, 'name')
+        self.map(provided_dict, domain, 'firstName', 'firstname')
+        self.map(provided_dict, domain, 'street1', 'street')
+        self.map(provided_dict, domain, 'country', 'countryCode')
+        self.map(provided_dict, domain, 'city')
+        self.map(provided_dict, domain, 'zip')
+        provided_dict = sender
+        domain = 'from_address'
+        self.map(provided_dict, domain, 'name')
+        self.map(provided_dict, domain, 'firstName', 'firstname')
+        self.map(provided_dict, domain, 'street1', 'street')
+        self.map(provided_dict, domain, 'country')
+        self.map(provided_dict, domain, 'city')
+        self.map(provided_dict, domain, 'zip')
+        provided_dict = delivery
+        domain = 'parcel'
+        self.map(provided_dict, domain, 'weight')
+        self.map(provided_dict['options'], domain, 'insuranceValue')
+        self.map(provided_dict['options'], domain, 'nonMachinable')
+        self.map(provided_dict['options'], domain, 'returnReceipt')
+        self.map(provided_dict['options'], domain, 'ftd')
+        return roul_laposte.get_label(self.payload)
+
+
 class WSInternational(ColiPoste):
 
-    def get_label(self, sender, delivery, address, option, return_request=False):
+    def get_label(
+            self, sender, delivery, address, option, return_request=False):
         sender_model = SENDER_MODEL.copy()
         infos = {
             'password': {'required': True},
