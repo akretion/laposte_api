@@ -461,7 +461,7 @@ class WSInternationalNew(ColiPoste):
         domain = 'service'
         self.map(provided_dict, domain, 'totalAmount')
         self.map(provided_dict, domain, 'shippingDate', 'date')
-        self.map(provided_dict, domain, 'senderParcelRef', 'ref_client')
+        self.map(provided_dict, domain, 'reference1', 'ref_client')
         domain = 'customs'
         self.map(delivery['customs'], domain, 'category')
         self.map(delivery['customs'], domain, 'articles')
@@ -472,6 +472,7 @@ class WSInternationalNew(ColiPoste):
         self.map(provided_dict, domain, 'street1', 'street')
         self.map(provided_dict, domain, 'country', 'countryCode')
         self.map(provided_dict, domain, 'city')
+        self.map(provided_dict, domain, 'phone')
         self.map(provided_dict, domain, 'zip')
         provided_dict = sender
         domain = 'from_address'
@@ -479,6 +480,7 @@ class WSInternationalNew(ColiPoste):
         self.map(provided_dict, domain, 'firstName', 'firstname')
         self.map(provided_dict, domain, 'street1', 'street')
         self.map(provided_dict, domain, 'country')
+        self.map(provided_dict, domain, 'phone')
         self.map(provided_dict, domain, 'city')
         self.map(provided_dict, domain, 'zip')
         provided_dict = delivery
