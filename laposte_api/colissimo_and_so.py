@@ -470,6 +470,8 @@ class WSInternationalNew(ColiPoste):
         self.map(provided_dict, domain, 'name')
         self.map(provided_dict, domain, 'firstName', 'firstname')
         self.map(provided_dict, domain, 'street1', 'street')
+        self.map(provided_dict, domain, 'street2')
+        self.map(provided_dict, domain, 'street3')
         self.map(provided_dict, domain, 'country', 'countryCode')
         self.map(provided_dict, domain, 'city')
         self.map(provided_dict, domain, 'phone')
