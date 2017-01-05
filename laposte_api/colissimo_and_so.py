@@ -469,6 +469,7 @@ class WSInternationalNew(ColiPoste):
         domain = 'to_address'
         self.map(provided_dict, domain, 'name')
         self.map(provided_dict, domain, 'firstName', 'firstname')
+        self.map(provided_dict, domain, 'company')
         self.map(provided_dict, domain, 'street1', 'street')
         self.map(provided_dict, domain, 'street2')
         self.map(provided_dict, domain, 'street3')
