@@ -139,7 +139,7 @@ class ColiPoste(AbstractLabel):
     _label_code = {
         'colissimo': ['9V', '9L', '7Q', '8Q'],
         'so_colissimo': ['6C', '6A', '6K', '6H', '6J', '6M'],
-        'ColiPosteInternational': ['EI', 'AI', 'COLI'],
+        'ColiPosteInternational': ['EI', 'AI', 'COLI', 'CMT'],
     }
 
     def __init__(self, account):
@@ -154,7 +154,7 @@ class ColiPoste(AbstractLabel):
                 if 'cab_suivi' in DELIVERY_MODEL:
                     # drop this key in case of existence in the previous call
                     del DELIVERY_MODEL['cab_suivi']
-            elif code in ['COLI']:
+            elif code in ['COLI', 'CMT']:
                 service = WSInternationalNew(self._account)
                 service_name = 'ColiPosteInternational'
             else:
@@ -493,6 +493,8 @@ class WSInternationalNew(ColiPoste):
         self.map(provided_dict['options'], domain, 'nonMachinable')
         self.map(provided_dict['options'], domain, 'returnReceipt')
         self.map(provided_dict['options'], domain, 'ftd')
+        if self._product_code == 'CMT':
+            self.map(provided_dict, domain, 'pickupLocationId')
         return roul_laposte.get_label(self.payload)
 
 
