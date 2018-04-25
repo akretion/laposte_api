@@ -139,7 +139,7 @@ class ColiPoste(AbstractLabel):
     _label_code = {
         'colissimo': ['9V', '9L', '7Q', '8Q'],
         'so_colissimo': ['6C', '6A', '6K', '6H', '6J', '6M'],
-        'ColiPosteInternational': ['EI', 'AI', 'COLI', 'CMT'],
+        'ColiPosteInternational': ['EI', 'AI', 'COLI', 'CMT', 'BDP'],
     }
 
     def __init__(self, account):
@@ -154,7 +154,7 @@ class ColiPoste(AbstractLabel):
                 if 'cab_suivi' in DELIVERY_MODEL:
                     # drop this key in case of existence in the previous call
                     del DELIVERY_MODEL['cab_suivi']
-            elif code in ['COLI', 'CMT']:
+            elif code in ['COLI', 'CMT', 'BDP']:
                 service = WSInternationalNew(self._account)
                 service_name = 'ColiPosteInternational'
             else:
@@ -443,6 +443,25 @@ class WSInternationalNew(ColiPoste):
         if dico.get(provided_key):
             self.payload[domain][required_key] = dico.get(provided_key)
 
+    def map_parcel(self, dico, domain, required_key, provided_key=None):
+        if not provided_key:
+            provided_key = required_key
+        sch = self.laposte_schema
+        if domain not in sch:
+            raise InvalidDataForLaposteInter(
+                u"Le domain fourni '%s' n'est pas présent dans les clés "
+                u"du schéma \n%s" % (domain, sch.keys()))
+        params = sch[domain]['items'][0]['schema'].get(required_key)
+        if params:
+            if params.get('required') and not dico.get(provided_key):
+                raise InvalidDataForLaposteInter(
+                    u"La clé '%s' est requise dans le domaine '%s'\n"
+                    u"mais n'est pas fourni.\n"
+                    u"Autres paramètres\n%s" % (required_key, domain, params))
+        if dico.get(provided_key):
+            self.payload_parcel[required_key] = dico.get(provided_key)
+
+
     def get_label(self, sender, delivery, address, option,
                   return_request=False):
         """
@@ -462,6 +481,8 @@ class WSInternationalNew(ColiPoste):
         self.map(provided_dict, domain, 'totalAmount')
         self.map(provided_dict, domain, 'shippingDate', 'date')
         self.map(provided_dict, domain, 'reference1', 'ref_client')
+        if self._product_code in ['CMT', 'BDP']:
+            self.map(provided_dict, domain, 'pickupLocationId')
         domain = 'customs'
         self.map(delivery['customs'], domain, 'category')
         self.map(delivery['customs'], domain, 'articles')
@@ -477,6 +498,7 @@ class WSInternationalNew(ColiPoste):
         self.map(provided_dict, domain, 'city')
         self.map(provided_dict, domain, 'phone')
         self.map(provided_dict, domain, 'zip')
+        self.map(provided_dict, domain, 'email')
         provided_dict = sender
         domain = 'from_address'
         self.map(provided_dict, domain, 'name')
@@ -486,15 +508,17 @@ class WSInternationalNew(ColiPoste):
         self.map(provided_dict, domain, 'phone')
         self.map(provided_dict, domain, 'city')
         self.map(provided_dict, domain, 'zip')
+        if self._product_code in ['CMT', 'BDP']:
+            self.payload['from_address']['companyName'] = provided_dict['commercial_name']
         provided_dict = delivery
-        domain = 'parcel'
-        self.map(provided_dict, domain, 'weight')
-        self.map(provided_dict['options'], domain, 'insuranceValue')
-        self.map(provided_dict['options'], domain, 'nonMachinable')
-        self.map(provided_dict['options'], domain, 'returnReceipt')
-        self.map(provided_dict['options'], domain, 'ftd')
-        if self._product_code == 'CMT':
-            self.map(provided_dict, domain, 'pickupLocationId')
+        self.payload_parcel = roul_laposte.api()['parcels'][0]
+        domain = 'parcels'
+        self.map_parcel(provided_dict, domain, 'weight')
+        self.map_parcel(provided_dict['options'], domain, 'insuranceValue')
+        self.map_parcel(provided_dict['options'], domain, 'nonMachinable')
+        self.map_parcel(provided_dict['options'], domain, 'returnReceipt')
+        self.map_parcel(provided_dict['options'], domain, 'ftd')
+        self.payload['parcels'] = [self.payload_parcel]
         return roul_laposte.get_label(self.payload)
 
 
