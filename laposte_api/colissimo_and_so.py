@@ -383,7 +383,7 @@ class ColiPoste(AbstractLabel):
         length = [8, 10, 15]
         #check len
         if len(key) not in length:
-            raise InvalidValueNotInList(warning + ": key length must be in %s"
+            raise InvalidValueNotInList(warning + ": %s key length must be in %s"
                                         % (key, length))
         # check chars content
         if not key.isdigit():
@@ -474,7 +474,7 @@ class WSInternationalNew(ColiPoste):
         self.payload['auth'].update({"login": self._account})
         self.map(sender, 'auth', 'password')
         self.payload['service'].update({"product": self._product_code})
-        self.payload['service'].update({"transportationAmount": 5})
+        self.payload['service'].update({"transportationAmount": 1})
         self.payload['service'].update({"returnTypeChoice": 3})
         provided_dict = delivery
         domain = 'service'
@@ -519,6 +519,7 @@ class WSInternationalNew(ColiPoste):
         self.map_parcel(provided_dict['options'], domain, 'returnReceipt')
         self.map_parcel(provided_dict['options'], domain, 'ftd')
         self.payload['parcels'] = [self.payload_parcel]
+    	_logger.info('Roulier payload %s' % self.payload)
         return roul_laposte.get_label(self.payload)
 
 
